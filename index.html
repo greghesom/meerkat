@@ -128,19 +128,18 @@
       }
 
       .comments-panel-container {
-        flex: 0 0 350px;
-        min-width: 300px;
-        max-width: 400px;
+        display: none;
+        flex-direction: column;
+        max-height: 300px;
         overflow-y: auto;
-        transition: flex-basis 0.3s ease, min-width 0.3s ease, max-width 0.3s ease, opacity 0.3s ease;
-        background: white;
-        border-left: 1px solid #e9ecef;
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        background: #f8f9fa;
+        border-top: 1px solid #e9ecef;
+        margin-top: 10px;
       }
 
       .comments-panel-container.collapsed {
-        flex-basis: 0;
-        min-width: 0;
-        max-width: 0;
+        max-height: 0;
         overflow: hidden;
         opacity: 0;
       }
@@ -630,9 +629,8 @@
 
       <div class="step-details-panel-container">
         <div id="step-details-container"></div>
-      </div>
-      
-      <div id="comments-panel-container" class="comments-panel-container" style="display: none;">
+        <div id="comments-panel-container" class="comments-panel-container" style="display: none;">
+        </div>
       </div>
     </div>
     </div>
@@ -705,6 +703,7 @@
       let currentStep = null; // Current timeline step
       let currentDiagramId = null; // Current diagram ID for storage
       let hasLocalEdits = false; // Track if local edits have been made
+      let isCommentsPanelEnabled = false; // Track if comments panel is enabled via toggle
 
       // Show error message in UI
       function showError(message) {
@@ -735,12 +734,15 @@
         }
       }
 
-      // Handle step click (show comments)
+      // Handle step click (show step details, and comments if panel is enabled)
       function handleStepClick(stepIndex, message, event) {
-        const commentsContainer = document.getElementById('comments-panel-container');
-        commentsContainer.style.display = 'flex';
-        document.getElementById('toggle-comments').classList.add('active');
-        commentPanel.show(stepIndex, message);
+        // Always update step details panel
+        stepDetailsPanel.updateStep(stepIndex + 1); // stepIndex is 0-based, updateStep expects 1-based
+        
+        // Only show comments panel if the toggle is enabled
+        if (isCommentsPanelEnabled) {
+          commentPanel.show(stepIndex, message);
+        }
       }
 
       // Handle step double-click (edit properties)
@@ -1017,10 +1019,10 @@
       const commentsContainer = document.getElementById('comments-panel-container');
       const toggleCommentsBtn = document.getElementById('toggle-comments');
       toggleCommentsBtn.addEventListener('click', () => {
-        const isVisible = commentsContainer.style.display !== 'none';
-        commentsContainer.style.display = isVisible ? 'none' : 'flex';
-        toggleCommentsBtn.classList.toggle('active', !isVisible);
-        if (isVisible) {
+        isCommentsPanelEnabled = !isCommentsPanelEnabled;
+        commentsContainer.style.display = isCommentsPanelEnabled ? 'flex' : 'none';
+        toggleCommentsBtn.classList.toggle('active', isCommentsPanelEnabled);
+        if (!isCommentsPanelEnabled) {
           commentPanel.hide();
         }
       });

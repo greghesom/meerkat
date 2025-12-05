@@ -9,8 +9,8 @@ import { diagramStorage } from '../storage/diagram-storage.js';
  * Comment Panel Configuration
  */
 const PANEL_CONFIG = {
-  maxWidth: 400,
-  minWidth: 300,
+  maxWidth: '100%',
+  minWidth: 0,
   animationDuration: 200,
 };
 
@@ -65,11 +65,8 @@ export class CommentPanel {
     this.panelElement.style.cssText = `
       display: none;
       flex-direction: column;
-      width: ${PANEL_CONFIG.maxWidth}px;
-      max-width: ${PANEL_CONFIG.maxWidth}px;
-      min-width: ${PANEL_CONFIG.minWidth}px;
-      background: #ffffff;
-      border-left: 1px solid #e9ecef;
+      width: 100%;
+      background: #f8f9fa;
       overflow: hidden;
       transition: opacity ${PANEL_CONFIG.animationDuration}ms ease;
     `;
@@ -86,44 +83,31 @@ export class CommentPanel {
 
     this.panelElement.innerHTML = `
       <div class="comment-panel-header" style="
-        padding: 16px;
+        padding: 10px 12px;
         border-bottom: 1px solid #e9ecef;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        background: #f8f9fa;
       ">
         <h3 style="
           margin: 0;
-          font-size: 14px;
+          font-size: 12px;
           font-weight: 600;
           color: #333;
-        ">Comments</h3>
-        <button class="comment-panel-close" style="
-          background: none;
-          border: none;
-          cursor: pointer;
-          font-size: 18px;
-          color: #666;
-          padding: 0 4px;
-        " title="Close">×</button>
+        ">💬 Comments</h3>
       </div>
       <div style="
-        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 40px 20px;
+        padding: 20px 12px;
         text-align: center;
         color: #6c757d;
       ">
-        <div>
-          <div style="font-size: 32px; margin-bottom: 8px;">💬</div>
-          <p style="margin: 0; font-size: 14px;">Click on a step to view or add comments</p>
-        </div>
+        <p style="margin: 0; font-size: 12px;">Click on a step to view comments</p>
       </div>
     `;
-
-    this._bindCloseButton();
   }
 
   /**
@@ -170,105 +154,86 @@ export class CommentPanel {
 
     this.panelElement.innerHTML = `
       <div class="comment-panel-header" style="
-        padding: 16px;
+        padding: 10px 12px;
         border-bottom: 1px solid #e9ecef;
+        background: #f8f9fa;
       ">
         <div style="
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          margin-bottom: 8px;
+          gap: 6px;
         ">
-          <div style="
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          ">
-            <span style="
-              background: #3b82f6;
-              color: white;
-              padding: 2px 8px;
-              border-radius: 4px;
-              font-size: 12px;
-              font-weight: 600;
-            ">Step ${stepNumber}</span>
-            <span style="
-              font-size: 14px;
-              font-weight: 600;
-              color: #333;
-            ">Comments</span>
-          </div>
-          <button class="comment-panel-close" style="
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
+          <span style="
+            background: #3b82f6;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 600;
+          ">Step ${stepNumber}</span>
+          <span style="
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+          ">💬 Comments</span>
+          <span style="
+            font-size: 11px;
             color: #666;
-            padding: 0 4px;
-          " title="Close">×</button>
+            margin-left: auto;
+          ">${messageText}</span>
         </div>
-        <div style="
-          font-size: 13px;
-          color: #666;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        ">${messageText}</div>
       </div>
       
       <div class="comments-list" style="
-        flex: 1;
+        max-height: 150px;
         overflow-y: auto;
-        padding: 12px 16px;
+        padding: 8px 12px;
       ">
         ${comments.length > 0 
           ? comments.map(c => this._renderComment(c, stepIndex)).join('')
           : `<div style="
               text-align: center;
               color: #6c757d;
-              padding: 20px;
+              padding: 10px;
             ">
-              <p style="margin: 0; font-size: 13px;">No comments yet</p>
-              <p style="margin: 4px 0 0 0; font-size: 12px;">Be the first to add a comment!</p>
+              <p style="margin: 0; font-size: 11px;">No comments yet</p>
             </div>`
         }
       </div>
       
       <div class="add-comment-form" style="
-        padding: 12px 16px;
+        padding: 8px 12px;
         border-top: 1px solid #e9ecef;
-        background: #f8f9fa;
+        background: #fff;
       ">
-        <textarea 
-          class="comment-input"
-          placeholder="Add a comment..."
-          style="
-            width: 100%;
-            min-height: 60px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            resize: vertical;
-            font-size: 13px;
-            font-family: inherit;
-            box-sizing: border-box;
-          "
-        ></textarea>
-        <div style="
-          display: flex;
-          justify-content: flex-end;
-          margin-top: 8px;
-        ">
+        <div style="display: flex; gap: 8px; align-items: flex-start;">
+          <textarea 
+            class="comment-input"
+            placeholder="Add a comment..."
+            style="
+              flex: 1;
+              min-height: 36px;
+              max-height: 60px;
+              padding: 8px;
+              border: 1px solid #ddd;
+              border-radius: 4px;
+              resize: none;
+              font-size: 12px;
+              font-family: inherit;
+              box-sizing: border-box;
+            "
+          ></textarea>
           <button class="add-comment-btn" style="
-            padding: 8px 16px;
+            padding: 8px 12px;
             background: #3b82f6;
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 500;
-          ">Add Comment</button>
+            white-space: nowrap;
+          ">Add</button>
         </div>
       </div>
     `;
@@ -288,57 +253,56 @@ export class CommentPanel {
 
     return `
       <div class="comment-item" data-comment-id="${comment.id}" style="
-        padding: 12px;
-        background: #f8f9fa;
-        border-radius: 8px;
-        margin-bottom: 10px;
+        padding: 8px;
+        background: #fff;
+        border-radius: 4px;
+        margin-bottom: 6px;
+        border: 1px solid #e9ecef;
       ">
         <div style="
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
         ">
           <div style="
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
           ">
             <div style="
-              width: 28px;
-              height: 28px;
+              width: 20px;
+              height: 20px;
               background: #3b82f6;
               border-radius: 50%;
               display: flex;
               align-items: center;
               justify-content: center;
               color: white;
-              font-size: 12px;
+              font-size: 9px;
               font-weight: 600;
             ">${this._getInitials(comment.author)}</div>
-            <div>
-              <div style="font-size: 13px; font-weight: 500; color: #333;">${this._escapeHtml(comment.author)}</div>
-              <div style="font-size: 11px; color: #888;">${timeStr}</div>
-            </div>
+            <span style="font-size: 11px; font-weight: 500; color: #333;">${this._escapeHtml(comment.author)}</span>
+            <span style="font-size: 10px; color: #888;">${timeStr}</span>
           </div>
           <button class="delete-comment-btn" data-comment-id="${comment.id}" style="
             background: none;
             border: none;
             cursor: pointer;
             color: #999;
-            font-size: 14px;
-            padding: 2px 6px;
+            font-size: 10px;
+            padding: 2px 4px;
           " title="Delete">🗑</button>
         </div>
         <div style="
-          font-size: 13px;
+          font-size: 11px;
           color: #333;
-          line-height: 1.5;
+          line-height: 1.4;
           white-space: pre-wrap;
           word-break: break-word;
         ">${this._escapeHtml(comment.text)}</div>
         ${comment.replies && comment.replies.length > 0 
-          ? `<div class="comment-replies" style="margin-top: 12px; margin-left: 16px; border-left: 2px solid #ddd; padding-left: 12px;">
+          ? `<div class="comment-replies" style="margin-top: 6px; margin-left: 12px; border-left: 2px solid #ddd; padding-left: 8px;">
               ${comment.replies.map(r => this._renderReply(r)).join('')}
             </div>`
           : ''
