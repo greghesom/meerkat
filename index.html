@@ -34,8 +34,7 @@
       }
 
       .config-selector {
-        max-width: 1400px;
-        margin: 0 auto 15px;
+        margin: 0 0 15px;
         padding: 12px 15px;
         background: white;
         border-radius: 8px;
@@ -79,8 +78,7 @@
       .container {
         display: flex;
         gap: 20px;
-        max-width: 1600px;
-        margin: 0 auto;
+        width: 100%;
         flex: 1;
         min-height: 0;
         overflow: hidden;
@@ -91,6 +89,15 @@
         min-width: 300px;
         overflow-y: auto;
         padding-right: 10px;
+        transition: flex-basis 0.3s ease, min-width 0.3s ease, opacity 0.3s ease;
+      }
+
+      .editor-panel.collapsed {
+        flex-basis: 0;
+        min-width: 0;
+        overflow: hidden;
+        opacity: 0;
+        padding: 0;
       }
 
       .diagram-panel {
@@ -109,6 +116,15 @@
         min-width: 280px;
         max-width: 380px;
         overflow-y: auto;
+        transition: flex-basis 0.3s ease, min-width 0.3s ease, max-width 0.3s ease, opacity 0.3s ease;
+      }
+
+      .step-details-panel-container.collapsed {
+        flex-basis: 0;
+        min-width: 0;
+        max-width: 0;
+        overflow: hidden;
+        opacity: 0;
       }
 
       .diagram-scroll-container {
@@ -116,12 +132,86 @@
         overflow: auto;
         padding: 20px;
         min-height: 0;
+        position: relative;
       }
 
       #diagram-container {
         min-height: 300px;
         display: inline-block;
         min-width: 100%;
+        transform-origin: top left;
+        transition: transform 0.2s ease;
+      }
+
+      #diagram-container svg {
+        max-width: none;
+      }
+
+      .diagram-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: #f9fafb;
+        border-bottom: 1px solid #e9ecef;
+      }
+
+      .zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-left: auto;
+      }
+
+      .zoom-controls button {
+        flex: none;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 4px;
+        background: #fff;
+        color: #333;
+        border: 1px solid #ddd;
+      }
+
+      .zoom-controls button:hover {
+        background: #f0f0f0;
+      }
+
+      .zoom-controls .zoom-level {
+        min-width: 48px;
+        text-align: center;
+        font-size: 12px;
+        color: #666;
+        padding: 0 8px;
+      }
+
+      .panel-toggle {
+        flex: none;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        font-size: 14px;
+        border-radius: 4px;
+        background: #fff;
+        color: #333;
+        border: 1px solid #ddd;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .panel-toggle:hover {
+        background: #f0f0f0;
+      }
+
+      .panel-toggle.active {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
       }
 
       #timeline-container {
@@ -495,6 +585,17 @@
       </div>
 
       <div class="diagram-panel">
+        <div class="diagram-toolbar">
+          <button id="toggle-editor" class="panel-toggle active" title="Toggle Editor Panel">📝</button>
+          <button id="toggle-details" class="panel-toggle active" title="Toggle Details Panel">📋</button>
+          <div class="zoom-controls">
+            <button id="zoom-out" title="Zoom Out">−</button>
+            <span id="zoom-level" class="zoom-level">100%</span>
+            <button id="zoom-in" title="Zoom In">+</button>
+            <button id="zoom-fit" title="Fit to Width" style="width: auto; padding: 0 8px;">Fit</button>
+            <button id="zoom-reset" title="Reset Zoom">↺</button>
+          </div>
+        </div>
         <div class="diagram-scroll-container">
           <div id="diagram-container"></div>
         </div>
@@ -736,6 +837,63 @@
         if (e.ctrlKey && e.key === 'Enter') {
           renderDiagram();
         }
+      });
+
+      // Zoom controls
+      let currentZoom = 1;
+      const MIN_ZOOM = 0.25;
+      const MAX_ZOOM = 3;
+      const ZOOM_STEP = 0.25;
+      const diagramContainer = document.getElementById('diagram-container');
+      const zoomLevelDisplay = document.getElementById('zoom-level');
+
+      function updateZoom(newZoom) {
+        currentZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+        diagramContainer.style.transform = `scale(${currentZoom})`;
+        zoomLevelDisplay.textContent = `${Math.round(currentZoom * 100)}%`;
+      }
+
+      function fitToWidth() {
+        const scrollContainer = document.querySelector('.diagram-scroll-container');
+        const svg = diagramContainer.querySelector('svg');
+        if (svg && scrollContainer) {
+          const svgWidth = parseFloat(svg.getAttribute('width'));
+          const containerWidth = scrollContainer.clientWidth - 40; // Account for padding
+          if (svgWidth > 0) {
+            const fitZoom = containerWidth / svgWidth;
+            updateZoom(fitZoom);
+          }
+        }
+      }
+
+      document.getElementById('zoom-in').addEventListener('click', () => {
+        updateZoom(currentZoom + ZOOM_STEP);
+      });
+
+      document.getElementById('zoom-out').addEventListener('click', () => {
+        updateZoom(currentZoom - ZOOM_STEP);
+      });
+
+      document.getElementById('zoom-fit').addEventListener('click', fitToWidth);
+
+      document.getElementById('zoom-reset').addEventListener('click', () => {
+        updateZoom(1);
+      });
+
+      // Panel toggle controls
+      const editorPanel = document.querySelector('.editor-panel');
+      const detailsPanel = document.querySelector('.step-details-panel-container');
+      const toggleEditorBtn = document.getElementById('toggle-editor');
+      const toggleDetailsBtn = document.getElementById('toggle-details');
+
+      toggleEditorBtn.addEventListener('click', () => {
+        editorPanel.classList.toggle('collapsed');
+        toggleEditorBtn.classList.toggle('active');
+      });
+
+      toggleDetailsBtn.addEventListener('click', () => {
+        detailsPanel.classList.toggle('collapsed');
+        toggleDetailsBtn.classList.toggle('active');
       });
 
       // Initialize
