@@ -76,6 +76,11 @@ const FLOW_LEGEND_CONFIG = {
 };
 
 /**
+ * Neutral color for shared messages (messages assigned to multiple flows)
+ */
+const SHARED_MESSAGE_COLOR = '#888888';
+
+/**
  * SVG Renderer for sequence diagrams
  */
 export class SVGRenderer {
@@ -109,6 +114,9 @@ export class SVGRenderer {
   render(ast, state = {}) {
     // Store flows for color lookup
     this.flows = ast.flows || [];
+    
+    // Store active flow from state for filtering
+    this.activeFlow = state.activeFlow || null;
 
     // Calculate dimensions
     const dimensions = this.calculateDimensions(ast);
@@ -254,6 +262,49 @@ export class SVGRenderer {
     if (!flowId || !this.flows) return null;
     const flow = this.flows.find(f => f.id === flowId);
     return flow ? flow.color : null;
+  }
+
+  /**
+   * Get the color for a message based on its flow assignments and active flow state
+   * @param {Array<string>} flowIds - Array of flow IDs the message belongs to
+   * @returns {string|null} - Color to use for the message, or null for default
+   */
+  getMessageFlowColor(flowIds) {
+    if (!flowIds || flowIds.length === 0) return null;
+    
+    // If there's an active flow, use its color if the message belongs to it
+    if (this.activeFlow) {
+      if (flowIds.includes(this.activeFlow)) {
+        return this.getFlowColor(this.activeFlow);
+      }
+      // Message doesn't belong to active flow
+      return null;
+    }
+    
+    // No active flow - check if message has multiple flows (shared message)
+    if (flowIds.length > 1) {
+      // Shared message - use neutral color
+      return SHARED_MESSAGE_COLOR;
+    }
+    
+    // Single flow - use that flow's color
+    return this.getFlowColor(flowIds[0]);
+  }
+
+  /**
+   * Check if a message should be visible based on active flow
+   * @param {Array<string>} flowIds - Array of flow IDs the message belongs to
+   * @returns {boolean} - True if message should be visible
+   */
+  isMessageVisible(flowIds) {
+    // If no active flow is set, all messages are visible
+    if (!this.activeFlow) return true;
+    
+    // If message has no flow assignments, it's always visible
+    if (!flowIds || flowIds.length === 0) return true;
+    
+    // Message is visible if it belongs to the active flow
+    return flowIds.includes(this.activeFlow);
   }
 
   /**
@@ -416,8 +467,16 @@ export class SVGRenderer {
 
       if (!sourcePos || !targetPos) return;
 
-      // Create message group
-      const messageGroup = this.createGroup(`message-${index}`);
+      // Get flow assignments for visibility check
+      const flowIds = message.annotations?.flows || [];
+      const isVisible = this.isMessageVisible(flowIds);
+
+      // Create message group with visibility class
+      let className = `message-${index}`;
+      if (!isVisible) {
+        className += ' flow-hidden';
+      }
+      const messageGroup = this.createGroup(className);
 
       // Check if this is a self-referencing message
       if (message.source === message.target) {
@@ -445,10 +504,9 @@ export class SVGRenderer {
     const loopWidth = 40;
     const loopHeight = 20;
 
-    // Get flow color
+    // Get flow color based on flow assignments and active flow state
     const flowIds = message.annotations?.flows || [];
-    const primaryFlowId = flowIds[0];
-    const flowColor = this.getFlowColor(primaryFlowId);
+    const flowColor = this.getMessageFlowColor(flowIds);
     const strokeColor = flowColor || '#333333';
 
     // Create path for loop
@@ -468,8 +526,13 @@ export class SVGRenderer {
 
     // Arrow marker (use flow-specific marker if available)
     let markerId;
-    if (primaryFlowId && flowColor) {
-      const safeId = this.sanitizeFlowId(primaryFlowId);
+    // Determine which flow ID to use for the marker
+    const effectiveFlowId = this.activeFlow && flowIds.includes(this.activeFlow) 
+      ? this.activeFlow 
+      : (flowIds.length === 1 ? flowIds[0] : null);
+    
+    if (effectiveFlowId && this.getFlowColor(effectiveFlowId)) {
+      const safeId = this.sanitizeFlowId(effectiveFlowId);
       markerId = message.arrow.head === 'open' ? `arrow-open-${safeId}` : `arrow-filled-${safeId}`;
     } else {
       markerId = message.arrow.head === 'open' ? 'arrow-open' : 'arrow-filled';
@@ -526,10 +589,9 @@ export class SVGRenderer {
     line.setAttribute('x2', targetPos.x);
     line.setAttribute('y2', y);
 
-    // Get flow color if message is assigned to a flow
+    // Get flow color based on flow assignments and active flow state
     const flowIds = message.annotations?.flows || [];
-    const primaryFlowId = flowIds[0]; // Use first flow for color
-    const flowColor = this.getFlowColor(primaryFlowId);
+    const flowColor = this.getMessageFlowColor(flowIds);
     const strokeColor = flowColor || '#333333';
 
     line.setAttribute('stroke', strokeColor);
@@ -542,8 +604,13 @@ export class SVGRenderer {
 
     // Arrow marker (use flow-specific marker if available)
     let markerId;
-    if (primaryFlowId && flowColor) {
-      const safeId = this.sanitizeFlowId(primaryFlowId);
+    // Determine which flow ID to use for the marker
+    const effectiveFlowId = this.activeFlow && flowIds.includes(this.activeFlow) 
+      ? this.activeFlow 
+      : (flowIds.length === 1 ? flowIds[0] : null);
+    
+    if (effectiveFlowId && this.getFlowColor(effectiveFlowId)) {
+      const safeId = this.sanitizeFlowId(effectiveFlowId);
       markerId = message.arrow.head === 'open' ? `arrow-open-${safeId}` : `arrow-filled-${safeId}`;
     } else {
       markerId = message.arrow.head === 'open' ? 'arrow-open' : 'arrow-filled';
@@ -566,10 +633,9 @@ export class SVGRenderer {
     const hasRequest = message.annotations?.request;
     const hasResponse = message.annotations?.response;
 
-    // Get flow color for text
+    // Get flow color for text based on flow assignments and active flow state
     const flowIds = message.annotations?.flows || [];
-    const primaryFlowId = flowIds[0];
-    const flowColor = this.getFlowColor(primaryFlowId);
+    const flowColor = this.getMessageFlowColor(flowIds);
     const textColor = flowColor || '#333333';
 
     // If there are any annotations, create a group containing label and badges
