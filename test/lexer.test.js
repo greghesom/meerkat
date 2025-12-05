@@ -278,5 +278,108 @@ describe('Lexer', () => {
       expect(tokens).toHaveLength(1);
       expect(tokens[0].type).toBe(TokenType.COMMENT);
     });
+
+    test('should tokenize flow directive with id and display name', () => {
+      const source = '%%flow happy_path "Happy Path - Successful Order"';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].id).toBe('happy_path');
+      expect(tokens[0].displayName).toBe('Happy Path - Successful Order');
+    });
+
+    test('should tokenize flow directive with only id', () => {
+      const source = '%%flow error_flow';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].id).toBe('error_flow');
+      expect(tokens[0].displayName).toBe('error_flow');
+    });
+
+    test('should tokenize multiple flow directives', () => {
+      const source = `%%flow happy_path "Happy Path"
+%%flow error_flow "Error Flow"
+%%flow retry_flow "Retry Flow"`;
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      const flowTokens = tokens.filter(t => t.type === TokenType.FLOW_DIRECTIVE);
+      expect(flowTokens).toHaveLength(3);
+      expect(flowTokens[0].id).toBe('happy_path');
+      expect(flowTokens[1].id).toBe('error_flow');
+      expect(flowTokens[2].id).toBe('retry_flow');
+    });
+
+    test('should tokenize flow directive with underscore in id', () => {
+      const source = '%%flow my_custom_flow "My Custom Flow"';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].id).toBe('my_custom_flow');
+    });
+
+    test('should tokenize flow directive with numbers in id', () => {
+      const source = '%%flow flow1 "Flow 1"';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].id).toBe('flow1');
+    });
+
+    test('should handle flow directive with tab separator', () => {
+      const source = '%%flow\thappy_path "Happy Path"';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].id).toBe('happy_path');
+    });
+
+    test('should tokenize flow directives in full diagram', () => {
+      const source = `sequenceDiagram
+    %%flow happy_path "Happy Path - Successful Order"
+    %%flow error_flow "Error Flow - Payment Failed"
+    
+    participant Client
+    participant API`;
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      const flowTokens = tokens.filter(t => t.type === TokenType.FLOW_DIRECTIVE);
+      expect(flowTokens).toHaveLength(2);
+      expect(flowTokens[0].id).toBe('happy_path');
+      expect(flowTokens[0].displayName).toBe('Happy Path - Successful Order');
+      expect(flowTokens[1].id).toBe('error_flow');
+      expect(flowTokens[1].displayName).toBe('Error Flow - Payment Failed');
+    });
+
+    test('should handle malformed flow directive as comment', () => {
+      const source = '%%flow';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.COMMENT);
+      expect(tokens[0].value).toBe('flow');
+    });
+
+    test('should handle flow directive with only whitespace after flow as comment', () => {
+      const source = '%%flow   ';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.COMMENT);
+    });
   });
 });

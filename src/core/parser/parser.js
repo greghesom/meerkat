@@ -36,6 +36,7 @@ export class Parser {
       version: '',
       participants: [],
       messages: [],
+      flows: [],
     };
 
     while (this.position < this.tokens.length) {
@@ -60,6 +61,11 @@ export class Parser {
 
         case TokenType.INIT_DIRECTIVE:
           this.parseInitConfig(diagram, token.value);
+          this.position++;
+          break;
+
+        case TokenType.FLOW_DIRECTIVE:
+          this.parseFlowDirective(diagram, token);
           this.position++;
           break;
 
@@ -207,6 +213,26 @@ export class Parser {
     if (config.version) {
       diagram.version = config.version;
     }
+  }
+
+  /**
+   * Parse flow directive and add to diagram flows array
+   * @param {object} diagram - The diagram AST node
+   * @param {object} token - The FLOW_DIRECTIVE token with id and displayName
+   */
+  parseFlowDirective(diagram, token) {
+    // Check for duplicate flow ids
+    const existingFlow = diagram.flows.find(f => f.id === token.id);
+    if (existingFlow) {
+      // Update display name if flow already exists
+      existingFlow.displayName = token.displayName;
+      return;
+    }
+
+    diagram.flows.push({
+      id: token.id,
+      displayName: token.displayName,
+    });
   }
 
   /**

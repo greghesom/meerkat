@@ -337,5 +337,120 @@ sequenceDiagram
       expect(ast.system).toBe('');
       expect(ast.version).toBe('');
     });
+
+    test('should have empty flows array by default', () => {
+      const ast = parse('sequenceDiagram');
+      
+      expect(ast.flows).toEqual([]);
+    });
+
+    test('should parse single flow directive', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow happy_path "Happy Path - Successful Order"
+    Client->>API: Request`);
+      
+      expect(ast.flows).toHaveLength(1);
+      expect(ast.flows[0].id).toBe('happy_path');
+      expect(ast.flows[0].displayName).toBe('Happy Path - Successful Order');
+    });
+
+    test('should parse multiple flow directives', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow happy_path "Happy Path - Successful Order"
+    %%flow error_flow "Error Flow - Payment Failed"
+    %%flow retry_flow "Retry Flow - With Fallback"
+    
+    participant Client
+    participant API`);
+      
+      expect(ast.flows).toHaveLength(3);
+      expect(ast.flows[0]).toEqual({ id: 'happy_path', displayName: 'Happy Path - Successful Order' });
+      expect(ast.flows[1]).toEqual({ id: 'error_flow', displayName: 'Error Flow - Payment Failed' });
+      expect(ast.flows[2]).toEqual({ id: 'retry_flow', displayName: 'Retry Flow - With Fallback' });
+    });
+
+    test('should parse flow directive without display name', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow simple_flow
+    Client->>API: Request`);
+      
+      expect(ast.flows).toHaveLength(1);
+      expect(ast.flows[0].id).toBe('simple_flow');
+      expect(ast.flows[0].displayName).toBe('simple_flow');
+    });
+
+    test('should support at least 8 distinct flows', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow flow1 "Flow 1"
+    %%flow flow2 "Flow 2"
+    %%flow flow3 "Flow 3"
+    %%flow flow4 "Flow 4"
+    %%flow flow5 "Flow 5"
+    %%flow flow6 "Flow 6"
+    %%flow flow7 "Flow 7"
+    %%flow flow8 "Flow 8"
+    
+    participant Client
+    participant API`);
+      
+      expect(ast.flows).toHaveLength(8);
+      for (let i = 1; i <= 8; i++) {
+        expect(ast.flows[i - 1].id).toBe(`flow${i}`);
+        expect(ast.flows[i - 1].displayName).toBe(`Flow ${i}`);
+      }
+    });
+
+    test('should handle duplicate flow ids by updating display name', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow happy_path "First Name"
+    %%flow happy_path "Updated Name"
+    Client->>API: Request`);
+      
+      expect(ast.flows).toHaveLength(1);
+      expect(ast.flows[0].id).toBe('happy_path');
+      expect(ast.flows[0].displayName).toBe('Updated Name');
+    });
+
+    test('flows should share participants', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow happy_path "Happy Path"
+    %%flow error_flow "Error Flow"
+    
+    participant Client
+    participant API
+    participant Payment
+    
+    Client->>API: Create Order
+    API->>Payment: Process Payment`);
+      
+      expect(ast.flows).toHaveLength(2);
+      expect(ast.participants).toHaveLength(3);
+      expect(ast.participants.map(p => p.id)).toContain('Client');
+      expect(ast.participants.map(p => p.id)).toContain('API');
+      expect(ast.participants.map(p => p.id)).toContain('Payment');
+    });
+
+    test('should parse complete diagram with flows and all metadata', () => {
+      const source = `%%{init: {"system": "Order Processing", "version": "1.0.0"}}%%
+sequenceDiagram
+    title: Order Checkout Flow
+    %%flow happy_path "Happy Path - Successful Order"
+    %%flow error_flow "Error Flow - Payment Failed"
+
+    participant Client
+    participant API
+    participant Payment
+    
+    Client->>API: Create Order @path(POST /orders)`;
+
+      const ast = parse(source);
+      
+      expect(ast.system).toBe('Order Processing');
+      expect(ast.version).toBe('1.0.0');
+      expect(ast.title).toBe('Order Checkout Flow');
+      expect(ast.flows).toHaveLength(2);
+      expect(ast.participants).toHaveLength(3);
+      expect(ast.messages).toHaveLength(1);
+    });
   });
 });
