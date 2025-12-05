@@ -11,6 +11,11 @@ export const NodeType = {
 };
 
 /**
+ * Pattern for matching HTTP methods in @path annotations
+ */
+const HTTP_METHOD_PATTERN = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)?\s*(.+)$/i;
+
+/**
  * Parser class - builds AST from tokens
  */
 export class Parser {
@@ -232,9 +237,7 @@ export class Parser {
 
       switch (annotation.name) {
         case 'path':
-          const pathMatch = annotation.value?.match(
-            /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)?\s*(.+)$/i
-          );
+          const pathMatch = annotation.value?.match(HTTP_METHOD_PATTERN);
           if (pathMatch) {
             annotations.method = pathMatch[1]?.toUpperCase() || null;
             annotations.path = pathMatch[2].trim();

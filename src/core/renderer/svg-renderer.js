@@ -1,4 +1,14 @@
 /**
+ * Default stroke dash pattern for async/dashed arrows
+ */
+const DASH_PATTERN = '5,3';
+
+/**
+ * Default lifeline dash pattern
+ */
+const LIFELINE_DASH_PATTERN = '5,5';
+
+/**
  * SVG Renderer for sequence diagrams
  */
 export class SVGRenderer {
@@ -17,6 +27,8 @@ export class SVGRenderer {
       participantWidth: options.participantWidth || 120,
       participantHeight: options.participantHeight || 40,
       theme: options.theme || 'light',
+      dashPattern: options.dashPattern || DASH_PATTERN,
+      lifelineDashPattern: options.lifelineDashPattern || LIFELINE_DASH_PATTERN,
       ...options,
     };
 
@@ -202,7 +214,7 @@ export class SVGRenderer {
       line.setAttribute('class', 'lifeline');
       line.setAttribute('stroke', '#cccccc');
       line.setAttribute('stroke-width', '1');
-      line.setAttribute('stroke-dasharray', '5,5');
+      line.setAttribute('stroke-dasharray', this.options.lifelineDashPattern);
 
       group.appendChild(line);
     });
@@ -267,7 +279,7 @@ export class SVGRenderer {
     path.setAttribute('stroke-width', '2');
 
     if (message.arrow.line === 'dashed' || message.annotations.isAsync) {
-      path.setAttribute('stroke-dasharray', '5,3');
+      path.setAttribute('stroke-dasharray', this.options.dashPattern);
     }
 
     const markerId = message.arrow.head === 'open' ? 'arrow-open' : 'arrow-filled';
@@ -304,7 +316,7 @@ export class SVGRenderer {
 
     // Dashed line for async
     if (message.arrow.line === 'dashed' || message.annotations.isAsync) {
-      line.setAttribute('stroke-dasharray', '5,3');
+      line.setAttribute('stroke-dasharray', this.options.dashPattern);
     }
 
     // Arrow marker
