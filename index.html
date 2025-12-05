@@ -458,15 +458,21 @@
 
       <div class="diagram-panel">
         <div id="diagram-container"></div>
+        <div id="timeline-container"></div>
       </div>
     </div>
 
     <script type="module">
-      import { SequenceVisualizer, Lexer, Parser } from './src/index.js';
+      import { SequenceVisualizer, Lexer, Parser, TimelineSlider } from './src/index.js';
 
       // Initialize visualizer
       const visualizer = new SequenceVisualizer('#diagram-container', {
         theme: 'light',
+      });
+
+      // Initialize timeline slider
+      const timelineSlider = new TimelineSlider('#timeline-container', {
+        onChange: (step, total) => onTimelineChange(step, total),
       });
 
       // State
@@ -475,6 +481,7 @@
       let diagramNames = new Map(); // Cache for diagram names
       let currentActiveFlow = null; // Current active flow for filtering
       let currentAST = null; // Cache the current AST for flow selector
+      let currentStep = null; // Current timeline step
 
       // Show error message in UI
       function showError(message) {
@@ -482,6 +489,18 @@
         document.getElementById('source').placeholder = message;
         document.getElementById('diagram-description').textContent = message;
         document.getElementById('diagram-info').style.display = 'block';
+      }
+
+      // Handle timeline slider changes
+      function onTimelineChange(step, total) {
+        // null means show all steps
+        currentStep = (step === total) ? null : step;
+        if (currentAST) {
+          visualizer.renderer.render(currentAST, { 
+            activeFlow: currentActiveFlow,
+            currentStep: currentStep,
+          });
+        }
       }
 
       // Load configuration
@@ -602,10 +621,19 @@
         const ast = parseSourceAndUpdateFlows(source);
         if (!ast) return;
         
-        // Render with active flow filter
+        // Initialize timeline slider with the number of messages
+        if (ast.messages.length > 0) {
+          timelineSlider.init(ast.messages.length);
+          currentStep = null; // Reset to show all steps
+        }
+        
+        // Render with active flow filter and timeline step
         visualizer.renderer.activeFlow = currentActiveFlow;
         visualizer.renderer.flows = ast.flows || [];
-        visualizer.renderer.render(ast, { activeFlow: currentActiveFlow });
+        visualizer.renderer.render(ast, { 
+          activeFlow: currentActiveFlow,
+          currentStep: currentStep,
+        });
       }
 
       // Reset to config version
@@ -613,6 +641,7 @@
         if (currentDiagramData) {
           document.getElementById('source').value = currentDiagramData.diagram;
           currentActiveFlow = null;
+          currentStep = null;
           document.getElementById('flow-select').value = '';
           renderDiagram();
         }

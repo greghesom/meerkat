@@ -76,6 +76,15 @@ const FLOW_LEGEND_CONFIG = {
 };
 
 /**
+ * Step visibility states for timeline scrubbing
+ */
+export const StepState = {
+  PAST: 'past',       // Previous steps - muted colors
+  CURRENT: 'current', // Current step - highlighted
+  FUTURE: 'future',   // Future steps - hidden or outline
+};
+
+/**
  * Neutral color for shared messages (messages assigned to multiple flows)
  */
 const SHARED_MESSAGE_COLOR = '#888888';
@@ -117,6 +126,11 @@ export class SVGRenderer {
     
     // Store active flow from state for filtering
     this.activeFlow = state.activeFlow || null;
+
+    // Store timeline step for step-based rendering
+    // currentStep: 0 = no messages, 1-n = show up to step n, null/undefined = show all
+    this.currentStep = state.currentStep ?? null;
+    this.totalSteps = ast.messages.length;
 
     // Calculate dimensions
     const dimensions = this.calculateDimensions(ast);
@@ -308,6 +322,61 @@ export class SVGRenderer {
   }
 
   /**
+   * Get the step state for a message based on current timeline position
+   * @param {number} messageIndex - The 0-based index of the message
+   * @returns {string|null} - One of StepState.PAST, StepState.CURRENT, StepState.FUTURE, or null if no timeline active
+   */
+  getStepState(messageIndex) {
+    // If currentStep is null/undefined, timeline is not active - show all messages normally
+    if (this.currentStep === null || this.currentStep === undefined) {
+      return null;
+    }
+
+    // currentStep 0 = no messages shown (start state, all future)
+    // currentStep 1 = first message is current
+    // currentStep n = nth message is current, all previous are past
+
+    if (this.currentStep === 0) {
+      // No messages shown yet - all are future
+      return StepState.FUTURE;
+    }
+
+    const messageStep = messageIndex + 1; // Convert to 1-based
+
+    if (messageStep < this.currentStep) {
+      return StepState.PAST;
+    } else if (messageStep === this.currentStep) {
+      return StepState.CURRENT;
+    } else {
+      return StepState.FUTURE;
+    }
+  }
+
+  /**
+   * Apply step state styling to a message group element
+   * @param {SVGElement} group - The SVG group element
+   * @param {string|null} stepState - The step state (PAST, CURRENT, FUTURE, or null)
+   */
+  applyStepStateToGroup(group, stepState) {
+    if (!stepState) return; // No timeline active
+
+    switch (stepState) {
+      case StepState.PAST:
+        // Muted colors for past steps
+        group.setAttribute('opacity', '0.4');
+        break;
+      case StepState.CURRENT:
+        // Highlighted current step - keep full opacity and add highlight
+        group.setAttribute('opacity', '1');
+        break;
+      case StepState.FUTURE:
+        // Hidden/outline for future steps
+        group.setAttribute('opacity', '0.15');
+        break;
+    }
+  }
+
+  /**
    * Create arrow marker definition
    */
   createArrowMarker(id, color, open = false) {
@@ -471,23 +540,32 @@ export class SVGRenderer {
       const flowIds = message.annotations?.flows || [];
       const isVisible = this.isMessageVisible(flowIds);
 
-      // Create message group with visibility class
+      // Get step state for timeline scrubbing
+      const stepState = this.getStepState(index);
+
+      // Create message group with visibility and step state classes
       let className = `message-${index}`;
       if (!isVisible) {
         className += ' flow-hidden';
       }
+      if (stepState) {
+        className += ` step-${stepState}`;
+      }
       const messageGroup = this.createGroup(className);
+
+      // Apply step state styling to message group
+      this.applyStepStateToGroup(messageGroup, stepState);
 
       // Check if this is a self-referencing message
       if (message.source === message.target) {
-        this.renderSelfMessage(messageGroup, sourcePos, y, message);
+        this.renderSelfMessage(messageGroup, sourcePos, y, message, stepState);
       } else {
         // Draw arrow line
-        const line = this.createMessageLine(sourcePos, targetPos, y, message);
+        const line = this.createMessageLine(sourcePos, targetPos, y, message, stepState);
         messageGroup.appendChild(line);
 
         // Draw message label
-        const label = this.createMessageLabel(sourcePos, targetPos, y, message);
+        const label = this.createMessageLabel(sourcePos, targetPos, y, message, stepState);
         messageGroup.appendChild(label);
       }
 
@@ -500,7 +578,7 @@ export class SVGRenderer {
   /**
    * Render a self-referencing message (loops back to same participant)
    */
-  renderSelfMessage(group, pos, y, message) {
+  renderSelfMessage(group, pos, y, message, stepState = null) {
     const loopWidth = 40;
     const loopHeight = 20;
 
@@ -582,7 +660,7 @@ export class SVGRenderer {
   /**
    * Create the message line/arrow
    */
-  createMessageLine(sourcePos, targetPos, y, message) {
+  createMessageLine(sourcePos, targetPos, y, message, stepState = null) {
     const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     line.setAttribute('x1', sourcePos.x);
     line.setAttribute('y1', y);
@@ -623,7 +701,7 @@ export class SVGRenderer {
   /**
    * Create message label with optional API path and request type annotations
    */
-  createMessageLabel(sourcePos, targetPos, y, message) {
+  createMessageLabel(sourcePos, targetPos, y, message, stepState = null) {
     const midX = (sourcePos.x + targetPos.x) / 2;
     const hasPath = message.annotations?.path;
     const hasRequestType = message.annotations?.requestType;
