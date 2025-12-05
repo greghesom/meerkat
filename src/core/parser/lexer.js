@@ -15,6 +15,7 @@ export const TokenType = {
   ANNOTATION: 'ANNOTATION',
   COMMENT: 'COMMENT',
   INIT_DIRECTIVE: 'INIT_DIRECTIVE',
+  FLOW_DIRECTIVE: 'FLOW_DIRECTIVE',
 };
 
 /**
@@ -170,7 +171,7 @@ export class Lexer {
   }
 
   /**
-   * Read a comment (lines starting with %%) or init directive %%{init: ...}%%
+   * Read a comment (lines starting with %%) or init directive %%{init: ...}%% or flow directive %%flow
    */
   readComment() {
     const start = this.position;
@@ -179,6 +180,11 @@ export class Lexer {
     // Check for init directive: %%{init: {...}}%%
     if (this.current() === '{') {
       return this.readInitDirective(start);
+    }
+
+    // Check for flow directive: %%flow flow_id "Display Name"
+    if (this.match('flow ') || this.match('flow\t')) {
+      return this.readFlowDirective();
     }
 
     while (this.position < this.source.length && this.current() !== '\n') {
@@ -249,6 +255,57 @@ export class Lexer {
       // If JSON parsing fails, treat as comment
       this.tokens.push({ type: TokenType.COMMENT, value: content });
     }
+  }
+
+  /**
+   * Read flow directive: %%flow flow_id "Display Name"
+   * Parses flow definitions for multi-flow visualization
+   */
+  readFlowDirective() {
+    this.position += 5; // skip 'flow '
+    this.skipWhitespace();
+
+    // Read flow identifier
+    const idStart = this.position;
+    while (this.position < this.source.length && this.isAlphaNumeric(this.current())) {
+      this.position++;
+    }
+    const id = this.source.slice(idStart, this.position);
+
+    if (!id) {
+      // No valid identifier, treat rest of line as comment
+      while (this.position < this.source.length && this.current() !== '\n') {
+        this.position++;
+      }
+      return;
+    }
+
+    this.skipWhitespace();
+
+    // Read display name (quoted string)
+    let displayName = id; // Default to id if no display name provided
+    if (this.current() === '"') {
+      this.position++; // skip opening quote
+      const nameStart = this.position;
+      while (this.position < this.source.length && this.current() !== '"' && this.current() !== '\n') {
+        this.position++;
+      }
+      displayName = this.source.slice(nameStart, this.position);
+      if (this.current() === '"') {
+        this.position++; // skip closing quote
+      }
+    }
+
+    // Skip to end of line
+    while (this.position < this.source.length && this.current() !== '\n') {
+      this.position++;
+    }
+
+    this.tokens.push({
+      type: TokenType.FLOW_DIRECTIVE,
+      id,
+      displayName,
+    });
   }
 
   /**
