@@ -1,0 +1,5 @@
+{
+  "name": "Order Processing",
+  "description": "Basic order processing flow between client, API, and database",
+  "diagram": "sequenceDiagram\n    participant Client\n    participant API\n    participant Database\n\n    Client->>API: Create Order\n    API->>Database: Save Order\n    Database-->>API: Order Saved\n    API-->>Client: Order Created"
+}

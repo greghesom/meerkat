@@ -1,0 +1,5 @@
+{
+  "name": "User Authentication",
+  "description": "User login authentication flow with token generation",
+  "diagram": "sequenceDiagram\n    participant User\n    participant Frontend\n    participant AuthService\n    participant Database\n\n    User->>Frontend: Enter Credentials\n    Frontend->>AuthService: Login Request\n    AuthService->>Database: Validate User\n    Database-->>AuthService: User Valid\n    AuthService-->>Frontend: JWT Token\n    Frontend-->>User: Login Success"
+}

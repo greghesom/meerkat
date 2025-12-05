@@ -1,0 +1,17 @@
+{
+  "defaultDiagram": "order-processing",
+  "diagrams": [
+    {
+      "id": "order-processing",
+      "file": "order-processing.json"
+    },
+    {
+      "id": "user-authentication",
+      "file": "user-authentication.json"
+    },
+    {
+      "id": "payment-flow",
+      "file": "payment-flow.json"
+    }
+  ]
+}
