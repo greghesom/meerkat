@@ -325,6 +325,80 @@
         left: 14px;
       }
 
+      /* Smaller auto-scroll toggle for bottom controls */
+      .timeline-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+        border-top: 1px solid #e9ecef;
+        padding-right: 8px;
+      }
+
+      .timeline-wrapper #timeline-container {
+        flex: 1;
+        border-top: none;
+      }
+
+      .auto-scroll-toggle-small {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 6px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 10px;
+        color: #666;
+        transition: all 0.15s ease;
+        user-select: none;
+        flex-shrink: 0;
+      }
+
+      .auto-scroll-toggle-small:hover {
+        background: #f0f0f0;
+      }
+
+      .auto-scroll-toggle-small.active {
+        background: #e0f2fe;
+        border-color: #3b82f6;
+        color: #1d4ed8;
+      }
+
+      .auto-scroll-toggle-small input[type="checkbox"] {
+        display: none;
+      }
+
+      .auto-scroll-toggle-small .toggle-indicator-small {
+        width: 20px;
+        height: 12px;
+        background: #ccc;
+        border-radius: 6px;
+        position: relative;
+        transition: background 0.2s ease;
+      }
+
+      .auto-scroll-toggle-small.active .toggle-indicator-small {
+        background: #3b82f6;
+      }
+
+      .auto-scroll-toggle-small .toggle-indicator-small::after {
+        content: '';
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background: white;
+        border-radius: 50%;
+        top: 2px;
+        left: 2px;
+        transition: left 0.2s ease;
+      }
+
+      .auto-scroll-toggle-small.active .toggle-indicator-small::after {
+        left: 10px;
+      }
+
       #timeline-container {
         flex-shrink: 0;
         border-top: 1px solid #e9ecef;
@@ -702,11 +776,6 @@
           <button id="toggle-comments" class="panel-toggle" title="Toggle Comments Panel">💬</button>
           <button id="add-step-btn" class="panel-toggle" title="Insert New Step">➕</button>
           <button id="export-btn" class="panel-toggle" title="Export Diagram">💾</button>
-          <label id="auto-scroll-toggle" class="auto-scroll-toggle active" title="Auto-scroll to keep current step in view">
-            <input type="checkbox" id="auto-scroll-checkbox" checked>
-            <span class="toggle-indicator"></span>
-            <span>Auto Scroll</span>
-          </label>
           <div class="zoom-controls">
             <button id="zoom-out" title="Zoom Out (Ctrl+-)">−</button>
             <span id="zoom-level" class="zoom-level">100%</span>
@@ -719,7 +788,14 @@
           <div id="frozen-header-overlay" class="frozen-header-overlay" style="display: none;"></div>
           <div id="diagram-container"></div>
         </div>
-        <div id="timeline-container"></div>
+        <div class="timeline-wrapper">
+          <div id="timeline-container"></div>
+          <label id="auto-scroll-toggle" class="auto-scroll-toggle-small active" title="Auto-scroll to keep current step in view">
+            <input type="checkbox" id="auto-scroll-checkbox" checked>
+            <span class="toggle-indicator-small"></span>
+            <span>Auto</span>
+          </label>
+        </div>
       </div>
 
       <div class="step-details-panel-container">
