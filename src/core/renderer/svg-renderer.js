@@ -22,6 +22,19 @@ const HTTP_METHOD_COLORS = {
 };
 
 /**
+ * API path badge styling constants
+ */
+const BADGE_CONFIG = {
+  height: 16,
+  padding: 8,
+  gap: 2,
+  methodCharWidth: 7,
+  pathCharWidth: 6,
+  labelOffset: 5,
+  labelSpacing: 10,
+};
+
+/**
  * SVG Renderer for sequence diagrams
  */
 export class SVGRenderer {
@@ -361,8 +374,9 @@ export class SVGRenderer {
 
     // Add API path badge if present
     if (message.annotations?.path) {
+      const textWidth = message.text.length * BADGE_CONFIG.pathCharWidth / 2;
       const pathBadge = this.createApiPathBadge(
-        pos.x + loopWidth + 5 + (message.text.length * 6 / 2) + 10,
+        pos.x + loopWidth + BADGE_CONFIG.labelOffset + textWidth + BADGE_CONFIG.labelSpacing,
         y + loopHeight / 2,
         message.annotations
       );
@@ -449,13 +463,13 @@ export class SVGRenderer {
     // Get colors for the HTTP method
     const colors = HTTP_METHOD_COLORS[method] || { bg: '#666666', text: '#ffffff' };
 
-    // Calculate badge dimensions
+    // Calculate badge dimensions using configuration
+    const { height, padding, gap, methodCharWidth, pathCharWidth } = BADGE_CONFIG;
     const methodText = method || '';
     const pathText = path || '';
-    const methodWidth = methodText.length * 7 + 8;
-    const pathWidth = pathText.length * 6 + 8;
-    const totalWidth = methodWidth + pathWidth + 4;
-    const badgeHeight = 16;
+    const methodWidth = methodText.length * methodCharWidth + padding;
+    const pathWidth = pathText.length * pathCharWidth + padding;
+    const totalWidth = methodWidth + pathWidth + (gap * 2);
     const startX = x - totalWidth / 2;
 
     // Create method badge (if method exists)
@@ -463,9 +477,9 @@ export class SVGRenderer {
       // Method background
       const methodRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       methodRect.setAttribute('x', startX);
-      methodRect.setAttribute('y', y - badgeHeight / 2);
+      methodRect.setAttribute('y', y - height / 2);
       methodRect.setAttribute('width', methodWidth);
-      methodRect.setAttribute('height', badgeHeight);
+      methodRect.setAttribute('height', height);
       methodRect.setAttribute('rx', '3');
       methodRect.setAttribute('fill', colors.bg);
       methodRect.setAttribute('class', `http-method http-method-${method.toLowerCase()}`);
@@ -486,14 +500,14 @@ export class SVGRenderer {
     }
 
     // Create path badge
-    const pathStartX = method ? startX + methodWidth + 2 : startX;
+    const pathStartX = method ? startX + methodWidth + gap : startX;
 
     // Path background
     const pathRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     pathRect.setAttribute('x', pathStartX);
-    pathRect.setAttribute('y', y - badgeHeight / 2);
+    pathRect.setAttribute('y', y - height / 2);
     pathRect.setAttribute('width', pathWidth);
-    pathRect.setAttribute('height', badgeHeight);
+    pathRect.setAttribute('height', height);
     pathRect.setAttribute('rx', '3');
     pathRect.setAttribute('fill', '#f0f0f0');
     pathRect.setAttribute('stroke', '#cccccc');
