@@ -343,6 +343,15 @@ export class Parser {
 
   /**
    * Parse payload annotation value (e.g., "name: string, email: string" or a schema URL)
+   * 
+   * Supports two types of values:
+   * 1. External references (URLs or anchors):
+   *    - http:// or https:// URLs for external schema definitions
+   *    - # anchor references for local schema definitions (e.g., #UserSchema)
+   * 2. Inline schemas: any other value is treated as an inline schema definition
+   * 
+   * @param {string} value - The raw annotation value
+   * @returns {object|null} Parsed payload object with type and schema/url
    */
   parsePayloadAnnotation(value) {
     if (!value) return null;
@@ -350,6 +359,7 @@ export class Parser {
     const trimmed = value.trim();
 
     // Check if it's a URL reference (external schema)
+    // Supports: http://, https://, and # anchor references
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('#')) {
       return {
         type: 'reference',

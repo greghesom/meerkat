@@ -665,15 +665,22 @@ export class SVGRenderer {
 
   /**
    * Create payload badge for request/response schema hints
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @param {string} type - Must be 'request' or 'response'
+   * @param {object} payload - Payload object with type and schema/url
    */
   createPayloadBadge(x, y, type, payload) {
-    const group = this.createGroup(`payload-badge payload-${type}`);
+    // Validate type parameter
+    const validTypes = ['request', 'response'];
+    const safeType = validTypes.includes(type) ? type : 'request';
+    
+    const group = this.createGroup(`payload-badge payload-${safeType}`);
     
     if (!payload) return group;
     
-    const colors = PAYLOAD_COLORS[type] || PAYLOAD_COLORS.request;
-    const icon = type === 'request' ? '→' : '←';
-    const label = type === 'request' ? 'REQ' : 'RES';
+    const colors = PAYLOAD_COLORS[safeType];
+    const label = safeType === 'request' ? 'REQ' : 'RES';
     
     // Determine display text and tooltip
     let displayText = label;
@@ -681,10 +688,10 @@ export class SVGRenderer {
     
     if (payload.type === 'reference') {
       displayText = `${label} 🔗`;
-      tooltipText = `${type === 'request' ? 'Request' : 'Response'} Schema: ${payload.url}`;
+      tooltipText = `${safeType === 'request' ? 'Request' : 'Response'} Schema: ${payload.url}`;
     } else if (payload.type === 'inline') {
-      displayText = `${label}: ${this.truncateSchema(payload.schema)}`;
-      tooltipText = `${type === 'request' ? 'Request' : 'Response'} Schema:\n${payload.schema}`;
+      displayText = `${label}: ${this.truncateText(payload.schema, 25)}`;
+      tooltipText = `${safeType === 'request' ? 'Request' : 'Response'} Schema:\n${payload.schema}`;
     }
     
     // Calculate badge dimensions
@@ -704,7 +711,7 @@ export class SVGRenderer {
     rect.setAttribute('fill', colors.bg);
     rect.setAttribute('stroke', colors.bg);
     rect.setAttribute('stroke-width', '1');
-    rect.setAttribute('class', `payload-badge-bg payload-${type}-bg`);
+    rect.setAttribute('class', `payload-badge-bg payload-${safeType}-bg`);
     rect.setAttribute('style', 'cursor: pointer;');
     group.appendChild(rect);
     
@@ -731,17 +738,7 @@ export class SVGRenderer {
   }
 
   /**
-   * Truncate schema text for display in badge
-   */
-  truncateSchema(schema) {
-    if (!schema) return '';
-    const maxLength = 25;
-    if (schema.length <= maxLength) return schema;
-    return schema.substring(0, maxLength) + '…';
-  }
-
-  /**
-   * Truncate text to specified length
+   * Truncate text to specified length with ellipsis
    */
   truncateText(text, maxLength) {
     if (!text) return '';
