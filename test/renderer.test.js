@@ -281,4 +281,213 @@ describe('SVGRenderer', () => {
     // Diagram with title should be taller
     expect(heightWithTitle).toBeGreaterThan(heightWithoutTitle);
   });
+
+  describe('API Path Annotations', () => {
+    test('should render API path badge with HTTP method', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      Client->>API: Get Products @path(GET /api/v1/products)`);
+      
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      
+      // Should have a message-label-group (containing text and path badge)
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      expect(labelGroup).toBeDefined();
+      
+      // Should contain the api-path-badge group
+      const pathBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'api-path-badge'
+      );
+      expect(pathBadge).toBeDefined();
+    });
+
+    test('should render HTTP method with correct color', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Create User @path(POST /api/users)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      const pathBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'api-path-badge'
+      );
+      
+      // Find the method rect (POST should be green: #49cc90)
+      const methodRect = pathBadge.children.find(
+        (c) => c.tagName === 'rect' && c.getAttribute('class')?.includes('http-method-post')
+      );
+      expect(methodRect).toBeDefined();
+      expect(methodRect.getAttribute('fill')).toBe('#49cc90');
+    });
+
+    test('should render different colors for different HTTP methods', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      // Test GET method (blue)
+      const astGet = parseSource('Client->>API: Request @path(GET /api/users)');
+      const svgGet = renderer.render(astGet);
+      const messagesGroupGet = svgGet.children.find((c) => c.getAttribute('class') === 'messages');
+      const pathBadgeGet = messagesGroupGet.children[0].children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      ).children.find((c) => c.getAttribute('class') === 'api-path-badge');
+      const methodRectGet = pathBadgeGet.children.find(
+        (c) => c.getAttribute('class')?.includes('http-method-get')
+      );
+      expect(methodRectGet.getAttribute('fill')).toBe('#61affe');
+      
+      // Test DELETE method (red)
+      const astDelete = parseSource('Client->>API: Remove @path(DELETE /api/users/1)');
+      const svgDelete = renderer.render(astDelete);
+      const messagesGroupDelete = svgDelete.children.find((c) => c.getAttribute('class') === 'messages');
+      const pathBadgeDelete = messagesGroupDelete.children[0].children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      ).children.find((c) => c.getAttribute('class') === 'api-path-badge');
+      const methodRectDelete = pathBadgeDelete.children.find(
+        (c) => c.getAttribute('class')?.includes('http-method-delete')
+      );
+      expect(methodRectDelete.getAttribute('fill')).toBe('#f93e3e');
+    });
+
+    test('should include tooltip with full path info', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Request @path(GET /api/users)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const labelGroup = messagesGroup.children[0].children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      const pathBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'api-path-badge'
+      );
+      
+      // Find the title element (tooltip)
+      const tooltip = pathBadge.children.find((c) => c.tagName === 'title');
+      expect(tooltip).toBeDefined();
+      expect(tooltip.textContent).toBe('GET /api/users');
+    });
+
+    test('should render path without method', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Request @path(/api/users)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const labelGroup = messagesGroup.children[0].children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      const pathBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'api-path-badge'
+      );
+      
+      // Should have path rect but no method rect
+      const pathRect = pathBadge.children.find(
+        (c) => c.tagName === 'rect' && c.getAttribute('class') === 'api-path'
+      );
+      expect(pathRect).toBeDefined();
+      
+      // No method rect (check that http-method class doesn't exist)
+      const methodRect = pathBadge.children.find(
+        (c) => c.getAttribute('class')?.includes('http-method-')
+      );
+      expect(methodRect).toBeUndefined();
+    });
+
+    test('should support all HTTP methods', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
+      const expectedColors = {
+        GET: '#61affe',
+        POST: '#49cc90',
+        PUT: '#fca130',
+        DELETE: '#f93e3e',
+        PATCH: '#50e3c2',
+      };
+      
+      methods.forEach(method => {
+        const ast = parseSource(`Client->>API: Request @path(${method} /api/test)`);
+        const svg = renderer.render(ast);
+        
+        const messagesGroup = svg.children.find((c) => c.getAttribute('class') === 'messages');
+        const pathBadge = messagesGroup.children[0].children.find(
+          (c) => c.getAttribute('class') === 'message-label-group'
+        ).children.find((c) => c.getAttribute('class') === 'api-path-badge');
+        
+        const methodRect = pathBadge.children.find(
+          (c) => c.getAttribute('class')?.includes(`http-method-${method.toLowerCase()}`)
+        );
+        expect(methodRect).toBeDefined();
+        expect(methodRect.getAttribute('fill')).toBe(expectedColors[method]);
+      });
+    });
+
+    test('should increase diagram height when path annotations are present', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const astWithPath = parseSource(`sequenceDiagram
+      Client->>API: Request @path(GET /api/users)`);
+      
+      const astWithoutPath = parseSource(`sequenceDiagram
+      Client->>API: Request`);
+      
+      const svgWithPath = renderer.render(astWithPath);
+      const svgWithoutPath = renderer.render(astWithoutPath);
+      
+      const heightWithPath = parseInt(svgWithPath.getAttribute('height'));
+      const heightWithoutPath = parseInt(svgWithoutPath.getAttribute('height'));
+      
+      // Diagram with path annotations should be taller
+      expect(heightWithPath).toBeGreaterThan(heightWithoutPath);
+    });
+
+    test('should render message text above path badge', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Get Products @path(GET /api/products)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const labelGroup = messagesGroup.children[0].children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      // Find message text
+      const messageText = labelGroup.children.find(
+        (c) => c.tagName === 'text' && c.getAttribute('class') === 'message-label'
+      );
+      expect(messageText).toBeDefined();
+      expect(messageText.textContent).toBe('Get Products');
+    });
+  });
 });

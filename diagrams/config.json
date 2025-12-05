@@ -1,6 +1,10 @@
 {
-  "defaultDiagram": "order-processing",
+  "defaultDiagram": "api-endpoints",
   "diagrams": [
+    {
+      "id": "api-endpoints",
+      "file": "api-endpoints.json"
+    },
     {
       "id": "order-processing",
       "file": "order-processing.json"
