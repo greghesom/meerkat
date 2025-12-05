@@ -150,6 +150,12 @@
         padding: 20px;
         min-height: 0;
         position: relative;
+        cursor: grab;
+      }
+
+      .diagram-scroll-container.panning {
+        cursor: grabbing;
+        user-select: none;
       }
 
       #diagram-container {
@@ -157,11 +163,58 @@
         display: inline-block;
         min-width: 100%;
         transform-origin: top left;
-        transition: transform 0.2s ease;
+        transition: transform 0.1s ease;
+      }
+
+      #diagram-container.no-transition {
+        transition: none;
       }
 
       #diagram-container svg {
         max-width: none;
+      }
+
+      /* Sticky floating header for title and participants */
+      .floating-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: white;
+        border-bottom: 1px solid #e9ecef;
+        margin: -20px -20px 0 -20px;
+        padding: 10px 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      }
+
+      .floating-header-content {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+
+      .floating-header-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1a1a1a;
+        flex-shrink: 0;
+      }
+
+      .floating-participants {
+        display: flex;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      .floating-participant {
+        background: #ffffff;
+        border: 2px solid #333;
+        border-radius: 4px;
+        padding: 4px 12px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #333;
       }
 
       .diagram-toolbar {
@@ -234,6 +287,65 @@
         background: #3b82f6;
         color: white;
         border-color: #3b82f6;
+      }
+
+      /* Auto-scroll toggle styles */
+      .auto-scroll-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        color: #333;
+        transition: all 0.15s ease;
+        user-select: none;
+      }
+
+      .auto-scroll-toggle:hover {
+        background: #f0f0f0;
+      }
+
+      .auto-scroll-toggle.active {
+        background: #e0f2fe;
+        border-color: #3b82f6;
+        color: #1d4ed8;
+      }
+
+      .auto-scroll-toggle input[type="checkbox"] {
+        display: none;
+      }
+
+      .auto-scroll-toggle .toggle-indicator {
+        width: 28px;
+        height: 16px;
+        background: #ccc;
+        border-radius: 8px;
+        position: relative;
+        transition: background 0.2s ease;
+      }
+
+      .auto-scroll-toggle.active .toggle-indicator {
+        background: #3b82f6;
+      }
+
+      .auto-scroll-toggle .toggle-indicator::after {
+        content: '';
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        background: white;
+        border-radius: 50%;
+        top: 2px;
+        left: 2px;
+        transition: left 0.2s ease;
+      }
+
+      .auto-scroll-toggle.active .toggle-indicator::after {
+        left: 14px;
       }
 
       #timeline-container {
@@ -613,15 +725,26 @@
           <button id="toggle-comments" class="panel-toggle" title="Toggle Comments Panel">💬</button>
           <button id="add-step-btn" class="panel-toggle" title="Insert New Step">➕</button>
           <button id="export-btn" class="panel-toggle" title="Export Diagram">💾</button>
+          <label id="auto-scroll-toggle" class="auto-scroll-toggle active" title="Auto-scroll to keep current step in view">
+            <input type="checkbox" id="auto-scroll-checkbox" checked>
+            <span class="toggle-indicator"></span>
+            <span>Auto Scroll</span>
+          </label>
           <div class="zoom-controls">
-            <button id="zoom-out" title="Zoom Out">−</button>
+            <button id="zoom-out" title="Zoom Out (Ctrl+-)">−</button>
             <span id="zoom-level" class="zoom-level">100%</span>
-            <button id="zoom-in" title="Zoom In">+</button>
+            <button id="zoom-in" title="Zoom In (Ctrl++)">+</button>
             <button id="zoom-fit" class="zoom-fit-btn" title="Fit to Width">Fit</button>
-            <button id="zoom-reset" title="Reset Zoom">↺</button>
+            <button id="zoom-reset" title="Reset Zoom (Ctrl+0)">↺</button>
           </div>
         </div>
-        <div class="diagram-scroll-container">
+        <div class="diagram-scroll-container" id="diagram-scroll-container">
+          <div id="floating-header" class="floating-header" style="display: none;">
+            <div class="floating-header-content">
+              <span id="floating-title" class="floating-header-title"></span>
+              <div id="floating-participants" class="floating-participants"></div>
+            </div>
+          </div>
           <div id="diagram-container"></div>
         </div>
         <div id="timeline-container"></div>
@@ -808,6 +931,9 @@
           
           // Update step details panel
           stepDetailsPanel.updateStep(currentStep);
+          
+          // Auto-scroll to keep current step in view
+          scrollToCurrentStep();
         }
       }
 
@@ -978,6 +1104,15 @@
           activeFlow: currentActiveFlow,
           currentStep: currentStep,
         });
+        
+        // Update floating header with title and participants
+        updateFloatingHeader();
+        
+        // Default view is "Fit" - fit to viewport after initial render
+        // Use setTimeout to ensure SVG is rendered before calculating fit
+        setTimeout(() => {
+          fitToWidth();
+        }, 50);
       }
 
       // Reset to config version
@@ -1048,17 +1183,35 @@
       const MIN_ZOOM = 0.25;
       const MAX_ZOOM = 3;
       const ZOOM_STEP = 0.25;
+      const WHEEL_ZOOM_FACTOR = 0.1;
       const diagramContainer = document.getElementById('diagram-container');
+      const diagramScrollContainer = document.getElementById('diagram-scroll-container');
       const zoomLevelDisplay = document.getElementById('zoom-level');
+      const floatingHeader = document.getElementById('floating-header');
+      const floatingTitle = document.getElementById('floating-title');
+      const floatingParticipants = document.getElementById('floating-participants');
+      const autoScrollToggle = document.getElementById('auto-scroll-toggle');
+      const autoScrollCheckbox = document.getElementById('auto-scroll-checkbox');
+      
+      // Auto-scroll state (default on)
+      let isAutoScrollEnabled = true;
 
-      function updateZoom(newZoom) {
+      function updateZoom(newZoom, smooth = true) {
         currentZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
+        if (!smooth) {
+          diagramContainer.classList.add('no-transition');
+        }
         diagramContainer.style.transform = `scale(${currentZoom})`;
         zoomLevelDisplay.textContent = `${Math.round(currentZoom * 100)}%`;
+        if (!smooth) {
+          // Force reflow then remove the class
+          void diagramContainer.offsetHeight;
+          diagramContainer.classList.remove('no-transition');
+        }
       }
 
       function fitToWidth() {
-        const scrollContainer = document.querySelector('.diagram-scroll-container');
+        const scrollContainer = diagramScrollContainer;
         const svg = diagramContainer.querySelector('svg');
         if (svg && scrollContainer) {
           const svgWidthAttr = svg.getAttribute('width');
@@ -1074,6 +1227,147 @@
           }
         }
       }
+
+      // Update floating header with title and participants
+      function updateFloatingHeader() {
+        if (!currentAST) {
+          floatingHeader.style.display = 'none';
+          return;
+        }
+        
+        // Set title
+        if (currentAST.title) {
+          floatingTitle.textContent = currentAST.title;
+          floatingTitle.style.display = 'block';
+        } else {
+          floatingTitle.style.display = 'none';
+        }
+        
+        // Set participants
+        floatingParticipants.innerHTML = '';
+        if (currentAST.participants && currentAST.participants.length > 0) {
+          currentAST.participants.forEach(p => {
+            const participantEl = document.createElement('span');
+            participantEl.className = 'floating-participant';
+            participantEl.textContent = p.displayName || p.id;
+            floatingParticipants.appendChild(participantEl);
+          });
+        }
+        
+        floatingHeader.style.display = 'block';
+      }
+
+      // Auto-scroll to keep current step in view
+      function scrollToCurrentStep() {
+        if (!isAutoScrollEnabled || currentStep === null || currentStep === undefined) return;
+        
+        const svg = diagramContainer.querySelector('svg');
+        if (!svg) return;
+        
+        // Find the message group for the current step
+        const stepIndex = currentStep - 1; // Convert 1-based step to 0-based index
+        const messageGroup = svg.querySelector(`.message-${stepIndex}`);
+        if (!messageGroup) return;
+        
+        // Get bounding box of the message group
+        const bbox = messageGroup.getBBox();
+        const scrollContainer = diagramScrollContainer;
+        
+        // Calculate the scaled position
+        const scaledY = bbox.y * currentZoom;
+        const scaledHeight = bbox.height * currentZoom;
+        
+        // Get container dimensions
+        const containerHeight = scrollContainer.clientHeight;
+        const floatingHeaderHeight = floatingHeader.offsetHeight || 0;
+        
+        // Calculate scroll position to center the current step
+        const targetScrollTop = scaledY - (containerHeight / 2) + (scaledHeight / 2) - floatingHeaderHeight;
+        
+        // Smooth scroll to the target position
+        scrollContainer.scrollTo({
+          top: Math.max(0, targetScrollTop),
+          behavior: 'smooth'
+        });
+      }
+
+      // Mouse wheel zoom with Ctrl+scroll
+      diagramScrollContainer.addEventListener('wheel', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          const delta = e.deltaY > 0 ? -WHEEL_ZOOM_FACTOR : WHEEL_ZOOM_FACTOR;
+          updateZoom(currentZoom + delta, false);
+        }
+      }, { passive: false });
+
+      // Click-and-drag pan functionality
+      let isPanning = false;
+      let startX = 0;
+      let startY = 0;
+      let scrollLeft = 0;
+      let scrollTop = 0;
+
+      diagramScrollContainer.addEventListener('mousedown', (e) => {
+        // Only start panning with left mouse button and not on interactive elements
+        if (e.button !== 0) return;
+        if (e.target.closest('button, input, select, .panel-toggle, .auto-scroll-toggle')) return;
+        
+        isPanning = true;
+        startX = e.pageX - diagramScrollContainer.offsetLeft;
+        startY = e.pageY - diagramScrollContainer.offsetTop;
+        scrollLeft = diagramScrollContainer.scrollLeft;
+        scrollTop = diagramScrollContainer.scrollTop;
+        diagramScrollContainer.classList.add('panning');
+      });
+
+      diagramScrollContainer.addEventListener('mousemove', (e) => {
+        if (!isPanning) return;
+        e.preventDefault();
+        const x = e.pageX - diagramScrollContainer.offsetLeft;
+        const y = e.pageY - diagramScrollContainer.offsetTop;
+        const walkX = (x - startX) * 1.5;
+        const walkY = (y - startY) * 1.5;
+        diagramScrollContainer.scrollLeft = scrollLeft - walkX;
+        diagramScrollContainer.scrollTop = scrollTop - walkY;
+      });
+
+      diagramScrollContainer.addEventListener('mouseup', () => {
+        isPanning = false;
+        diagramScrollContainer.classList.remove('panning');
+      });
+
+      diagramScrollContainer.addEventListener('mouseleave', () => {
+        isPanning = false;
+        diagramScrollContainer.classList.remove('panning');
+      });
+
+      // Auto-scroll toggle
+      autoScrollToggle.addEventListener('click', () => {
+        isAutoScrollEnabled = !isAutoScrollEnabled;
+        autoScrollCheckbox.checked = isAutoScrollEnabled;
+        autoScrollToggle.classList.toggle('active', isAutoScrollEnabled);
+      });
+
+      // Keyboard shortcuts for zoom
+      document.addEventListener('keydown', (e) => {
+        // Skip if in input field
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+          return;
+        }
+        
+        if (e.ctrlKey || e.metaKey) {
+          if (e.key === '=' || e.key === '+') {
+            e.preventDefault();
+            updateZoom(currentZoom + ZOOM_STEP);
+          } else if (e.key === '-') {
+            e.preventDefault();
+            updateZoom(currentZoom - ZOOM_STEP);
+          } else if (e.key === '0') {
+            e.preventDefault();
+            updateZoom(1);
+          }
+        }
+      });
 
       document.getElementById('zoom-in').addEventListener('click', () => {
         updateZoom(currentZoom + ZOOM_STEP);
