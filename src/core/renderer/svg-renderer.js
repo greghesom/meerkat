@@ -50,6 +50,7 @@ const BADGE_CONFIG = {
   pathCharWidth: 6,
   labelOffset: 5,
   labelSpacing: 10,
+  messageLabelCharWidth: 3.5,
 };
 
 /**
@@ -492,7 +493,7 @@ export class SVGRenderer {
 
       // Add async/sync indicator icon if explicitly marked
       if (isAsync) {
-        const asyncIcon = this.createAsyncIcon(midX + (message.text.length * 3.5) + 10, y - 20);
+        const asyncIcon = this.createAsyncIcon(midX + (message.text.length * BADGE_CONFIG.messageLabelCharWidth) + 10, y - 20);
         group.appendChild(asyncIcon);
       }
 
