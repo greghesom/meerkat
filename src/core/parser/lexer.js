@@ -262,7 +262,7 @@ export class Lexer {
    * Parses flow definitions for multi-flow visualization
    */
   readFlowDirective() {
-    this.position += 5; // skip 'flow '
+    this.position += 4; // skip 'flow' (the space or tab is handled by skipWhitespace)
     this.skipWhitespace();
 
     // Read flow identifier
@@ -273,10 +273,13 @@ export class Lexer {
     const id = this.source.slice(idStart, this.position);
 
     if (!id) {
-      // No valid identifier, treat rest of line as comment
+      // No valid identifier found, create a comment token with the malformed content
+      const start = this.position;
       while (this.position < this.source.length && this.current() !== '\n') {
         this.position++;
       }
+      const content = this.source.slice(start, this.position).trim();
+      this.tokens.push({ type: TokenType.COMMENT, value: `flow ${content}`.trim() });
       return;
     }
 

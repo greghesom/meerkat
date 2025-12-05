@@ -362,5 +362,24 @@ describe('Lexer', () => {
       expect(flowTokens[1].id).toBe('error_flow');
       expect(flowTokens[1].displayName).toBe('Error Flow - Payment Failed');
     });
+
+    test('should handle malformed flow directive as comment', () => {
+      const source = '%%flow';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.COMMENT);
+      expect(tokens[0].value).toBe('flow');
+    });
+
+    test('should handle flow directive with only whitespace after flow as comment', () => {
+      const source = '%%flow   ';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.COMMENT);
+    });
   });
 });
