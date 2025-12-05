@@ -709,4 +709,194 @@ describe('SVGRenderer', () => {
       expect(heightWithType).toBeGreaterThan(heightWithoutType);
     });
   });
+
+  describe('Sync/Async Request Indicators', () => {
+    test('should render async icon for @async annotated messages', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      API-->>Queue: Emit Event @async`);
+      
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      expect(labelGroup).toBeDefined();
+      
+      // Should have async icon
+      const asyncIcon = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'async-icon'
+      );
+      expect(asyncIcon).toBeDefined();
+    });
+
+    test('should render timeout badge for @timeout annotation', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('API->>Database: Query @sync @timeout(100ms)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      expect(labelGroup).toBeDefined();
+      
+      // Should have sync-async-indicator
+      const indicator = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'sync-async-indicator'
+      );
+      expect(indicator).toBeDefined();
+      
+      // Should have text with timeout
+      const text = indicator.children.find((c) => c.tagName === 'text');
+      expect(text).toBeDefined();
+      expect(text.textContent).toContain('100ms');
+    });
+
+    test('should render queue badge for @queue annotation', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('API-->>Queue: Emit Event @async @queue(user-events)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      expect(labelGroup).toBeDefined();
+      
+      // Should have sync-async-indicator
+      const indicator = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'sync-async-indicator'
+      );
+      expect(indicator).toBeDefined();
+      
+      // Should have text with queue name
+      const text = indicator.children.find((c) => c.tagName === 'text');
+      expect(text).toBeDefined();
+      expect(text.textContent).toContain('user-events');
+    });
+
+    test('should render both timeout and queue in same badge', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('API-->>Queue: Event @async @timeout(5000ms) @queue(events)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      const indicator = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'sync-async-indicator'
+      );
+      expect(indicator).toBeDefined();
+      
+      const text = indicator.children.find((c) => c.tagName === 'text');
+      expect(text.textContent).toContain('5000ms');
+      expect(text.textContent).toContain('events');
+    });
+
+    test('should render dashed line for @async messages', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      // Use solid arrow (->>) with @async annotation - should render as dashed
+      const ast = parseSource('API->>Queue: Event @async');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const line = messageGroup.children.find((c) => c.tagName === 'line');
+      
+      // Should have dashed pattern for async
+      expect(line.getAttribute('stroke-dasharray')).toBe('5,3');
+    });
+
+    test('should render solid line for @sync messages', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      // Use solid arrow (->>) with @sync annotation - should remain solid
+      const ast = parseSource('Client->>API: Request @sync');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const line = messageGroup.children.find((c) => c.tagName === 'line');
+      
+      // Should NOT have dashed pattern for sync
+      expect(line.getAttribute('stroke-dasharray')).toBeUndefined();
+    });
+
+    test('async icon should have tooltip', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('API-->>Queue: Event @async');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      const asyncIcon = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'async-icon'
+      );
+      
+      const tooltip = asyncIcon.children.find((c) => c.tagName === 'title');
+      expect(tooltip).toBeDefined();
+      expect(tooltip.textContent).toBe('Asynchronous');
+    });
+
+    test('should increase diagram height when timeout/queue annotations are present', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const astWithAnnotations = parseSource(`sequenceDiagram
+      API->>DB: Query @timeout(100ms)`);
+      
+      const astWithoutAnnotations = parseSource(`sequenceDiagram
+      API->>DB: Query`);
+      
+      const svgWith = renderer.render(astWithAnnotations);
+      const svgWithout = renderer.render(astWithoutAnnotations);
+      
+      const heightWith = parseInt(svgWith.getAttribute('height'));
+      const heightWithout = parseInt(svgWithout.getAttribute('height'));
+      
+      // Diagram with annotations should be taller
+      expect(heightWith).toBeGreaterThan(heightWithout);
+    });
+  });
 });

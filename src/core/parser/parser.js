@@ -282,6 +282,7 @@ export class Parser {
       requestType: null,
       isAsync: false,
       timeout: null,
+      queue: null,
       flows: [],
     };
 
@@ -313,6 +314,10 @@ export class Parser {
 
         case 'timeout':
           annotations.timeout = annotation.value;
+          break;
+
+        case 'queue':
+          annotations.queue = annotation.value;
           break;
 
         case 'flow':

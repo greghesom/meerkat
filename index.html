@@ -268,6 +268,20 @@
       .sequence-diagram .protocol-legend {
         font-family: sans-serif;
       }
+
+      /* Sync/Async indicator styles */
+      .sequence-diagram .async-icon {
+        cursor: pointer;
+      }
+
+      .sequence-diagram .sync-async-indicator {
+        cursor: pointer;
+      }
+
+      .sequence-diagram .sync-async-badge {
+        fill: #e3f2fd;
+        stroke: #90caf9;
+      }
     </style>
   </head>
   <body>
@@ -325,6 +339,26 @@
           </div>
           <div class="legend-item" style="font-size: 12px; color: #666;">
             Custom types are also supported with a default style
+          </div>
+        </div>
+
+        <div class="legend" style="margin-top: 10px;">
+          <h3>Sync/Async Annotations</h3>
+          <div class="legend-item">
+            <code>@sync</code>
+            <span>- Mark as synchronous (solid line)</span>
+          </div>
+          <div class="legend-item">
+            <code>@async</code>
+            <span>- Mark as asynchronous (dashed line + clock icon)</span>
+          </div>
+          <div class="legend-item">
+            <code>@timeout(100ms)</code>
+            <span>- Expected response time</span>
+          </div>
+          <div class="legend-item">
+            <code>@queue(user-events)</code>
+            <span>- Message queue name</span>
           </div>
         </div>
 

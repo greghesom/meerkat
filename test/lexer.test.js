@@ -83,6 +83,38 @@ describe('Lexer', () => {
       expect(annotation).toEqual({ type: TokenType.ANNOTATION, name: 'sync', value: null });
     });
 
+    test('should tokenize @async annotation', () => {
+      const lexer = new Lexer('API-->>Queue: Event @async');
+      const tokens = lexer.tokenize();
+      
+      const annotation = tokens.find(t => t.type === TokenType.ANNOTATION);
+      expect(annotation).toEqual({ type: TokenType.ANNOTATION, name: 'async', value: null });
+    });
+
+    test('should tokenize @queue annotation with value', () => {
+      const lexer = new Lexer('@queue(user-events)');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toEqual({
+        type: TokenType.ANNOTATION,
+        name: 'queue',
+        value: 'user-events',
+      });
+    });
+
+    test('should tokenize @timeout annotation with value', () => {
+      const lexer = new Lexer('@timeout(100ms)');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toEqual({
+        type: TokenType.ANNOTATION,
+        name: 'timeout',
+        value: '100ms',
+      });
+    });
+
     test('should tokenize annotations with values', () => {
       const lexer = new Lexer('@path(GET /api/users)');
       const tokens = lexer.tokenize();

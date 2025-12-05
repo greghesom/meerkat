@@ -50,6 +50,7 @@ const BADGE_CONFIG = {
   pathCharWidth: 6,
   labelOffset: 5,
   labelSpacing: 10,
+  messageLabelCharWidth: 3.5,
 };
 
 /**
@@ -136,6 +137,8 @@ export class SVGRenderer {
     // Check if any messages have path or request type annotations (need extra height)
     const hasPathAnnotations = ast.messages.some(m => m.annotations?.path);
     const hasRequestTypeAnnotations = ast.messages.some(m => m.annotations?.requestType);
+    const hasTimeoutAnnotations = ast.messages.some(m => m.annotations?.timeout);
+    const hasQueueAnnotations = ast.messages.some(m => m.annotations?.queue);
     
     // Collect unique request types used in the diagram
     const usedRequestTypes = [...new Set(
@@ -151,6 +154,7 @@ export class SVGRenderer {
     let annotationExtraHeight = 0;
     if (hasPathAnnotations) annotationExtraHeight += 15;
     if (hasRequestTypeAnnotations) annotationExtraHeight += 15;
+    if (hasTimeoutAnnotations || hasQueueAnnotations) annotationExtraHeight += 12;
     
     const effectiveMessageGap = messageGap + annotationExtraHeight;
 
@@ -467,12 +471,15 @@ export class SVGRenderer {
     const midX = (sourcePos.x + targetPos.x) / 2;
     const hasPath = message.annotations?.path;
     const hasRequestType = message.annotations?.requestType;
+    const hasTimeout = message.annotations?.timeout;
+    const hasQueue = message.annotations?.queue;
+    const isAsync = message.annotations?.isAsync;
 
     // If there are any annotations, create a group containing label and badges
-    if (hasPath || hasRequestType) {
+    if (hasPath || hasRequestType || hasTimeout || hasQueue || isAsync) {
       const group = this.createGroup('message-label-group');
 
-      // Create message text
+      // Create message text with optional async icon
       const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
       text.setAttribute('x', midX);
       text.setAttribute('y', y - 20);
@@ -483,6 +490,12 @@ export class SVGRenderer {
       text.setAttribute('fill', '#333333');
       text.textContent = message.text;
       group.appendChild(text);
+
+      // Add async/sync indicator icon if explicitly marked
+      if (isAsync) {
+        const asyncIcon = this.createAsyncIcon(midX + (message.text.length * BADGE_CONFIG.messageLabelCharWidth) + 10, y - 20);
+        group.appendChild(asyncIcon);
+      }
 
       // Calculate badge positions
       let badgeY = y - 8;
@@ -504,6 +517,12 @@ export class SVGRenderer {
         group.appendChild(pathBadge);
       }
 
+      // Create timeout/queue indicator below the arrow line
+      if (hasTimeout || hasQueue) {
+        const indicatorBadge = this.createSyncAsyncIndicator(midX, y + 12, message.annotations);
+        group.appendChild(indicatorBadge);
+      }
+
       return group;
     }
 
@@ -519,6 +538,101 @@ export class SVGRenderer {
     text.textContent = message.text;
 
     return text;
+  }
+
+  /**
+   * Create async clock icon for async messages
+   */
+  createAsyncIcon(x, y) {
+    const group = this.createGroup('async-icon');
+    
+    // Clock circle
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', y);
+    circle.setAttribute('r', '6');
+    circle.setAttribute('fill', 'none');
+    circle.setAttribute('stroke', '#ff9800');
+    circle.setAttribute('stroke-width', '1.5');
+    group.appendChild(circle);
+    
+    // Clock hands
+    const hands = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    hands.setAttribute('d', `M ${x} ${y} L ${x} ${y - 3} M ${x} ${y} L ${x + 2} ${y + 1}`);
+    hands.setAttribute('stroke', '#ff9800');
+    hands.setAttribute('stroke-width', '1.5');
+    hands.setAttribute('stroke-linecap', 'round');
+    group.appendChild(hands);
+    
+    // Tooltip
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = 'Asynchronous';
+    group.appendChild(title);
+    
+    return group;
+  }
+
+  /**
+   * Create sync/async indicator badge with timeout and queue info
+   */
+  createSyncAsyncIndicator(x, y, annotations) {
+    const group = this.createGroup('sync-async-indicator');
+    
+    let badgeText = '';
+    if (annotations.timeout) {
+      badgeText += `⏱ ${annotations.timeout}`;
+    }
+    if (annotations.queue) {
+      if (badgeText) badgeText += ' ';
+      badgeText += `📥 ${annotations.queue}`;
+    }
+    
+    if (!badgeText) return group;
+    
+    // Calculate badge dimensions
+    const charWidth = 6;
+    const padding = 8;
+    const height = 14;
+    const badgeWidth = badgeText.length * charWidth + padding;
+    const startX = x - badgeWidth / 2;
+    
+    // Badge background
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', startX);
+    rect.setAttribute('y', y - height / 2);
+    rect.setAttribute('width', badgeWidth);
+    rect.setAttribute('height', height);
+    rect.setAttribute('rx', '3');
+    rect.setAttribute('fill', '#e3f2fd');
+    rect.setAttribute('stroke', '#90caf9');
+    rect.setAttribute('stroke-width', '1');
+    rect.setAttribute('class', 'sync-async-badge');
+    group.appendChild(rect);
+    
+    // Badge text
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', x);
+    text.setAttribute('y', y);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('font-family', 'sans-serif');
+    text.setAttribute('font-size', '9');
+    text.setAttribute('fill', '#1565c0');
+    text.textContent = badgeText;
+    group.appendChild(text);
+    
+    // Tooltip with full info
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    let tooltipText = '';
+    if (annotations.timeout) tooltipText += `Timeout: ${annotations.timeout}`;
+    if (annotations.queue) {
+      if (tooltipText) tooltipText += '\n';
+      tooltipText += `Queue: ${annotations.queue}`;
+    }
+    title.textContent = tooltipText;
+    group.appendChild(title);
+    
+    return group;
   }
 
   /**
