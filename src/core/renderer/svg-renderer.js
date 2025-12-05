@@ -9,6 +9,19 @@ const DASH_PATTERN = '5,3';
 const LIFELINE_DASH_PATTERN = '5,5';
 
 /**
+ * HTTP method colors for visual distinction
+ */
+const HTTP_METHOD_COLORS = {
+  GET: { bg: '#61affe', text: '#ffffff' },
+  POST: { bg: '#49cc90', text: '#ffffff' },
+  PUT: { bg: '#fca130', text: '#ffffff' },
+  DELETE: { bg: '#f93e3e', text: '#ffffff' },
+  PATCH: { bg: '#50e3c2', text: '#ffffff' },
+  HEAD: { bg: '#9012fe', text: '#ffffff' },
+  OPTIONS: { bg: '#0d5aa7', text: '#ffffff' },
+};
+
+/**
  * SVG Renderer for sequence diagrams
  */
 export class SVGRenderer {
@@ -61,7 +74,7 @@ export class SVGRenderer {
     this.renderLifelines(participantPositions, dimensions.height, ast.title);
 
     // Render messages with arrows
-    this.renderMessages(ast.messages, participantPositions, state, ast.title);
+    this.renderMessages(ast.messages, participantPositions, state, ast.title, dimensions);
 
     // Clear and append to container
     if (this.container) {
@@ -84,13 +97,17 @@ export class SVGRenderer {
     // Add height for title if present
     const titleHeight = ast.title ? 40 : 0;
 
+    // Check if any messages have path annotations (need extra height)
+    const hasPathAnnotations = ast.messages.some(m => m.annotations?.path);
+    const effectiveMessageGap = hasPathAnnotations ? messageGap + 15 : messageGap;
+
     const width = numParticipants > 0
       ? padding * 2 + (numParticipants - 1) * participantGap + this.options.participantWidth
       : 400;
 
-    const height = padding * 2 + titleHeight + participantHeight + 30 + numMessages * messageGap + 50;
+    const height = padding * 2 + titleHeight + participantHeight + 30 + numMessages * effectiveMessageGap + 50;
 
-    return { width, height, titleHeight };
+    return { width, height, titleHeight, effectiveMessageGap };
   }
 
   /**
@@ -260,8 +277,11 @@ export class SVGRenderer {
   /**
    * Render messages with arrows
    */
-  renderMessages(messages, positions, state, hasTitle) {
+  renderMessages(messages, positions, state, hasTitle, dimensions) {
     const { padding, participantHeight, messageGap } = this.options;
+
+    // Use effective message gap from dimensions (accounts for path annotations)
+    const effectiveMessageGap = dimensions?.effectiveMessageGap || messageGap;
 
     // Add offset for title if present
     const titleOffset = hasTitle ? 40 : 0;
@@ -270,7 +290,7 @@ export class SVGRenderer {
     const group = this.createGroup('messages');
 
     messages.forEach((message, index) => {
-      const y = startY + index * messageGap;
+      const y = startY + index * effectiveMessageGap;
       const sourcePos = positions.get(message.source);
       const targetPos = positions.get(message.target);
 
@@ -338,6 +358,16 @@ export class SVGRenderer {
     text.textContent = message.text;
 
     group.appendChild(text);
+
+    // Add API path badge if present
+    if (message.annotations?.path) {
+      const pathBadge = this.createApiPathBadge(
+        pos.x + loopWidth + 5 + (message.text.length * 6 / 2) + 10,
+        y + loopHeight / 2,
+        message.annotations
+      );
+      group.appendChild(pathBadge);
+    }
   }
 
   /**
@@ -365,11 +395,36 @@ export class SVGRenderer {
   }
 
   /**
-   * Create message label
+   * Create message label with optional API path annotation
    */
   createMessageLabel(sourcePos, targetPos, y, message) {
     const midX = (sourcePos.x + targetPos.x) / 2;
+    const hasPath = message.annotations?.path;
 
+    // If there's a path annotation, create a group containing label and path badge
+    if (hasPath) {
+      const group = this.createGroup('message-label-group');
+
+      // Create message text
+      const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      text.setAttribute('x', midX);
+      text.setAttribute('y', y - 20);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('class', 'message-label');
+      text.setAttribute('font-family', 'sans-serif');
+      text.setAttribute('font-size', '12');
+      text.setAttribute('fill', '#333333');
+      text.textContent = message.text;
+      group.appendChild(text);
+
+      // Create API path badge
+      const pathBadge = this.createApiPathBadge(midX, y - 8, message.annotations);
+      group.appendChild(pathBadge);
+
+      return group;
+    }
+
+    // No path annotation - just return the text
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', midX);
     text.setAttribute('y', y - 8);
@@ -381,5 +436,88 @@ export class SVGRenderer {
     text.textContent = message.text;
 
     return text;
+  }
+
+  /**
+   * Create API path badge with HTTP method color coding
+   */
+  createApiPathBadge(x, y, annotations) {
+    const group = this.createGroup('api-path-badge');
+    const method = annotations.method;
+    const path = annotations.path;
+
+    // Get colors for the HTTP method
+    const colors = HTTP_METHOD_COLORS[method] || { bg: '#666666', text: '#ffffff' };
+
+    // Calculate badge dimensions
+    const methodText = method || '';
+    const pathText = path || '';
+    const methodWidth = methodText.length * 7 + 8;
+    const pathWidth = pathText.length * 6 + 8;
+    const totalWidth = methodWidth + pathWidth + 4;
+    const badgeHeight = 16;
+    const startX = x - totalWidth / 2;
+
+    // Create method badge (if method exists)
+    if (method) {
+      // Method background
+      const methodRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      methodRect.setAttribute('x', startX);
+      methodRect.setAttribute('y', y - badgeHeight / 2);
+      methodRect.setAttribute('width', methodWidth);
+      methodRect.setAttribute('height', badgeHeight);
+      methodRect.setAttribute('rx', '3');
+      methodRect.setAttribute('fill', colors.bg);
+      methodRect.setAttribute('class', `http-method http-method-${method.toLowerCase()}`);
+      group.appendChild(methodRect);
+
+      // Method text
+      const methodLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      methodLabel.setAttribute('x', startX + methodWidth / 2);
+      methodLabel.setAttribute('y', y);
+      methodLabel.setAttribute('text-anchor', 'middle');
+      methodLabel.setAttribute('dominant-baseline', 'middle');
+      methodLabel.setAttribute('font-family', 'monospace');
+      methodLabel.setAttribute('font-size', '10');
+      methodLabel.setAttribute('font-weight', '600');
+      methodLabel.setAttribute('fill', colors.text);
+      methodLabel.textContent = method;
+      group.appendChild(methodLabel);
+    }
+
+    // Create path badge
+    const pathStartX = method ? startX + methodWidth + 2 : startX;
+
+    // Path background
+    const pathRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    pathRect.setAttribute('x', pathStartX);
+    pathRect.setAttribute('y', y - badgeHeight / 2);
+    pathRect.setAttribute('width', pathWidth);
+    pathRect.setAttribute('height', badgeHeight);
+    pathRect.setAttribute('rx', '3');
+    pathRect.setAttribute('fill', '#f0f0f0');
+    pathRect.setAttribute('stroke', '#cccccc');
+    pathRect.setAttribute('stroke-width', '1');
+    pathRect.setAttribute('class', 'api-path');
+    group.appendChild(pathRect);
+
+    // Path text
+    const pathLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    pathLabel.setAttribute('x', pathStartX + pathWidth / 2);
+    pathLabel.setAttribute('y', y);
+    pathLabel.setAttribute('text-anchor', 'middle');
+    pathLabel.setAttribute('dominant-baseline', 'middle');
+    pathLabel.setAttribute('font-family', 'monospace');
+    pathLabel.setAttribute('font-size', '10');
+    pathLabel.setAttribute('fill', '#333333');
+    pathLabel.textContent = path;
+    group.appendChild(pathLabel);
+
+    // Add tooltip with full path info
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = method ? `${method} ${path}` : path;
+    group.appendChild(title);
+
+    return group;
   }
 }

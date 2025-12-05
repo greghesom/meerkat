@@ -223,6 +223,27 @@
         stroke-width: 1;
         stroke-dasharray: 5, 5;
       }
+
+      /* API Path Badge styles */
+      .sequence-diagram .api-path-badge {
+        cursor: pointer;
+      }
+
+      .sequence-diagram .http-method {
+        font-family: monospace;
+        font-weight: 600;
+      }
+
+      .sequence-diagram .http-method-get { fill: #61affe; }
+      .sequence-diagram .http-method-post { fill: #49cc90; }
+      .sequence-diagram .http-method-put { fill: #fca130; }
+      .sequence-diagram .http-method-delete { fill: #f93e3e; }
+      .sequence-diagram .http-method-patch { fill: #50e3c2; }
+
+      .sequence-diagram .api-path {
+        fill: #f0f0f0;
+        stroke: #cccccc;
+      }
     </style>
   </head>
   <body>
@@ -255,6 +276,17 @@
           <div class="legend-item">
             <span class="arrow-demo dashed"></span>
             <span>Dashed arrow (-->>, -->) - Asynchronous</span>
+          </div>
+        </div>
+
+        <div class="legend" style="margin-top: 10px;">
+          <h3>API Path Annotations</h3>
+          <div class="legend-item">
+            <code>@path(GET /api/users)</code>
+            <span>- Annotate with HTTP method and path</span>
+          </div>
+          <div class="legend-item" style="font-size: 12px; color: #666;">
+            Supported methods: GET, POST, PUT, DELETE, PATCH
           </div>
         </div>
 
