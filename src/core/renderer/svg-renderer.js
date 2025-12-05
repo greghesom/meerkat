@@ -110,11 +110,41 @@ export class SVGRenderer {
       theme: options.theme || 'light',
       dashPattern: options.dashPattern || DASH_PATTERN,
       lifelineDashPattern: options.lifelineDashPattern || LIFELINE_DASH_PATTERN,
+      enableInteraction: options.enableInteraction ?? true,
       ...options,
     };
 
     this.svg = null;
     this.defs = null;
+    
+    // Event callbacks for step interaction
+    this.onStepClick = null;
+    this.onStepDoubleClick = null;
+    this.commentCounts = {}; // Map of stepIndex to comment count
+  }
+
+  /**
+   * Set comment counts for rendering comment badges
+   * @param {Object} counts - Map of stepIndex to comment count
+   */
+  setCommentCounts(counts) {
+    this.commentCounts = counts || {};
+  }
+
+  /**
+   * Register click handler for steps
+   * @param {Function} handler - Callback function(stepIndex, message, event)
+   */
+  setOnStepClick(handler) {
+    this.onStepClick = handler;
+  }
+
+  /**
+   * Register double-click handler for steps
+   * @param {Function} handler - Callback function(stepIndex, message, event)
+   */
+  setOnStepDoubleClick(handler) {
+    this.onStepDoubleClick = handler;
   }
 
   /**
@@ -559,6 +589,9 @@ export class SVGRenderer {
         className += ` step-${stepState}`;
       }
       const messageGroup = this.createGroup(className);
+      
+      // Add data attribute for step index
+      messageGroup.setAttribute('data-step-index', index);
 
       // Apply step state styling to message group
       this.applyStepStateToGroup(messageGroup, stepState);
@@ -575,6 +608,19 @@ export class SVGRenderer {
         const label = this.createMessageLabel(sourcePos, targetPos, y, message, stepState);
         messageGroup.appendChild(label);
       }
+      
+      // Add comment badge if there are comments
+      const commentCount = this.commentCounts[index];
+      if (commentCount && commentCount > 0) {
+        const midX = (sourcePos.x + targetPos.x) / 2;
+        const badge = this.createCommentBadge(midX + 50, y - 20, commentCount);
+        messageGroup.appendChild(badge);
+      }
+      
+      // Add interaction handlers if enabled
+      if (this.options.enableInteraction && isVisible) {
+        this.addStepInteraction(messageGroup, index, message);
+      }
 
       // Increment visible index only for visible messages
       if (isVisible) {
@@ -585,6 +631,98 @@ export class SVGRenderer {
     });
 
     this.svg.appendChild(group);
+  }
+
+  /**
+   * Add interaction handlers to a step group
+   * @param {SVGElement} group - The message group element
+   * @param {number} index - The step index
+   * @param {Object} message - The message object
+   */
+  addStepInteraction(group, index, message) {
+    // Make the group interactive - use setAttribute for compatibility with mock DOM
+    if (group.style) {
+      group.style.cursor = 'pointer';
+    } else {
+      group.setAttribute('style', 'cursor: pointer;');
+    }
+    
+    // Add click handler (check if addEventListener exists for mock DOM compatibility)
+    if (group.addEventListener) {
+      group.addEventListener('click', (e) => {
+        if (e.stopPropagation) e.stopPropagation();
+        if (this.onStepClick) {
+          this.onStepClick(index, message, e);
+        }
+      });
+      
+      // Add double-click handler
+      group.addEventListener('dblclick', (e) => {
+        if (e.stopPropagation) e.stopPropagation();
+        if (this.onStepDoubleClick) {
+          this.onStepDoubleClick(index, message, e);
+        }
+      });
+      
+      // Add hover effect
+      group.addEventListener('mouseenter', () => {
+        group.setAttribute('opacity', '0.8');
+      });
+      
+      group.addEventListener('mouseleave', () => {
+        // Restore opacity based on step state
+        const className = group.className?.baseVal || group.getAttribute('class') || '';
+        const stepState = className.match(/step-(\w+)/)?.[1];
+        if (stepState === 'past') {
+          group.setAttribute('opacity', '0.4');
+        } else if (stepState === 'future') {
+          group.setAttribute('opacity', '0.15');
+        } else {
+          group.setAttribute('opacity', '1');
+        }
+      });
+    }
+  }
+
+  /**
+   * Create a comment badge
+   * @param {number} x - X position
+   * @param {number} y - Y position
+   * @param {number} count - Comment count
+   * @returns {SVGElement}
+   */
+  createCommentBadge(x, y, count) {
+    const group = this.createGroup('comment-badge');
+    
+    // Badge circle
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', y);
+    circle.setAttribute('r', '10');
+    circle.setAttribute('fill', '#f59e0b');
+    circle.setAttribute('stroke', '#ffffff');
+    circle.setAttribute('stroke-width', '1.5');
+    group.appendChild(circle);
+    
+    // Count text
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', x);
+    text.setAttribute('y', y);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('fill', '#ffffff');
+    text.setAttribute('font-size', '10');
+    text.setAttribute('font-weight', '600');
+    text.setAttribute('font-family', 'sans-serif');
+    text.textContent = count > 9 ? '9+' : String(count);
+    group.appendChild(text);
+    
+    // Tooltip
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = `${count} comment${count !== 1 ? 's' : ''} - Click to view`;
+    group.appendChild(title);
+    
+    return group;
   }
 
   /**
