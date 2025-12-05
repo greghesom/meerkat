@@ -180,6 +180,11 @@
         background: #f0f0f0;
       }
 
+      .zoom-controls .zoom-fit-btn {
+        width: auto;
+        padding: 0 8px;
+      }
+
       .zoom-controls .zoom-level {
         min-width: 48px;
         text-align: center;
@@ -592,7 +597,7 @@
             <button id="zoom-out" title="Zoom Out">−</button>
             <span id="zoom-level" class="zoom-level">100%</span>
             <button id="zoom-in" title="Zoom In">+</button>
-            <button id="zoom-fit" title="Fit to Width" style="width: auto; padding: 0 8px;">Fit</button>
+            <button id="zoom-fit" class="zoom-fit-btn" title="Fit to Width">Fit</button>
             <button id="zoom-reset" title="Reset Zoom">↺</button>
           </div>
         </div>
@@ -857,9 +862,14 @@
         const scrollContainer = document.querySelector('.diagram-scroll-container');
         const svg = diagramContainer.querySelector('svg');
         if (svg && scrollContainer) {
-          const svgWidth = parseFloat(svg.getAttribute('width'));
-          const containerWidth = scrollContainer.clientWidth - 40; // Account for padding
-          if (svgWidth > 0) {
+          const svgWidthAttr = svg.getAttribute('width');
+          const svgWidth = svgWidthAttr ? parseFloat(svgWidthAttr) : 0;
+          // Get computed padding from the scroll container
+          const computedStyle = window.getComputedStyle(scrollContainer);
+          const paddingLeft = parseFloat(computedStyle.paddingLeft) || 0;
+          const paddingRight = parseFloat(computedStyle.paddingRight) || 0;
+          const containerWidth = scrollContainer.clientWidth - paddingLeft - paddingRight;
+          if (svgWidth > 0 && containerWidth > 0) {
             const fitZoom = containerWidth / svgWidth;
             updateZoom(fitZoom);
           }
