@@ -49,14 +49,19 @@ export class SVGRenderer {
     // Create defs for markers
     this.defs = this.createDefs();
 
+    // Render title if present
+    if (ast.title) {
+      this.renderTitle(ast.title, dimensions);
+    }
+
     // Render participants (boxes at the top)
-    const participantPositions = this.renderParticipants(ast.participants);
+    const participantPositions = this.renderParticipants(ast.participants, ast.title);
 
     // Render lifelines
-    this.renderLifelines(participantPositions, dimensions.height);
+    this.renderLifelines(participantPositions, dimensions.height, ast.title);
 
     // Render messages with arrows
-    this.renderMessages(ast.messages, participantPositions, state);
+    this.renderMessages(ast.messages, participantPositions, state, ast.title);
 
     // Clear and append to container
     if (this.container) {
@@ -76,13 +81,16 @@ export class SVGRenderer {
     const numParticipants = ast.participants.length;
     const numMessages = ast.messages.length;
 
+    // Add height for title if present
+    const titleHeight = ast.title ? 40 : 0;
+
     const width = numParticipants > 0
       ? padding * 2 + (numParticipants - 1) * participantGap + this.options.participantWidth
       : 400;
 
-    const height = padding * 2 + participantHeight + 30 + numMessages * messageGap + 50;
+    const height = padding * 2 + titleHeight + participantHeight + 30 + numMessages * messageGap + 50;
 
-    return { width, height };
+    return { width, height, titleHeight };
   }
 
   /**
@@ -146,17 +154,41 @@ export class SVGRenderer {
   }
 
   /**
+   * Render title prominently above the diagram
+   */
+  renderTitle(title, dimensions) {
+    const { padding } = this.options;
+    
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', dimensions.width / 2);
+    text.setAttribute('y', padding + 10);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('class', 'diagram-title');
+    text.setAttribute('font-family', 'sans-serif');
+    text.setAttribute('font-size', '18');
+    text.setAttribute('font-weight', '600');
+    text.setAttribute('fill', '#1a1a1a');
+    text.textContent = title;
+
+    this.svg.appendChild(text);
+  }
+
+  /**
    * Render participant boxes
    */
-  renderParticipants(participants) {
+  renderParticipants(participants, hasTitle) {
     const positions = new Map();
     const { padding, participantGap, participantWidth, participantHeight } = this.options;
+
+    // Add offset for title if present
+    const titleOffset = hasTitle ? 40 : 0;
 
     const group = this.createGroup('participants');
 
     participants.forEach((participant, index) => {
       const x = padding + index * participantGap;
-      const y = padding;
+      const y = padding + titleOffset;
 
       // Store center position for message routing
       positions.set(participant.id, {
@@ -201,14 +233,17 @@ export class SVGRenderer {
   /**
    * Render lifelines from participant boxes down
    */
-  renderLifelines(positions, height) {
+  renderLifelines(positions, height, hasTitle) {
     const group = this.createGroup('lifelines');
     const { padding, participantHeight } = this.options;
+
+    // Add offset for title if present
+    const titleOffset = hasTitle ? 40 : 0;
 
     positions.forEach((pos) => {
       const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       line.setAttribute('x1', pos.x);
-      line.setAttribute('y1', padding + participantHeight);
+      line.setAttribute('y1', padding + titleOffset + participantHeight);
       line.setAttribute('x2', pos.x);
       line.setAttribute('y2', height - padding);
       line.setAttribute('class', 'lifeline');
@@ -225,9 +260,12 @@ export class SVGRenderer {
   /**
    * Render messages with arrows
    */
-  renderMessages(messages, positions, state) {
+  renderMessages(messages, positions, state, hasTitle) {
     const { padding, participantHeight, messageGap } = this.options;
-    const startY = padding + participantHeight + 30;
+
+    // Add offset for title if present
+    const titleOffset = hasTitle ? 40 : 0;
+    const startY = padding + titleOffset + participantHeight + 30;
 
     const group = this.createGroup('messages');
 

@@ -14,6 +14,7 @@ export const TokenType = {
   // Extended tokens
   ANNOTATION: 'ANNOTATION',
   COMMENT: 'COMMENT',
+  INIT_DIRECTIVE: 'INIT_DIRECTIVE',
 };
 
 /**
@@ -39,6 +40,7 @@ const KEYWORDS = [
   'left',
   'of',
   'title',
+  'description',
 ];
 
 /**
@@ -168,11 +170,16 @@ export class Lexer {
   }
 
   /**
-   * Read a comment (lines starting with %%)
+   * Read a comment (lines starting with %%) or init directive %%{init: ...}%%
    */
   readComment() {
     const start = this.position;
     this.position += 2; // skip %%
+
+    // Check for init directive: %%{init: {...}}%%
+    if (this.current() === '{') {
+      return this.readInitDirective(start);
+    }
 
     while (this.position < this.source.length && this.current() !== '\n') {
       this.position++;
@@ -180,6 +187,68 @@ export class Lexer {
 
     const content = this.source.slice(start + 2, this.position).trim();
     this.tokens.push({ type: TokenType.COMMENT, value: content });
+  }
+
+  /**
+   * Read init directive %%{init: {...}}%%
+   */
+  readInitDirective(start) {
+    // Find the closing }%%
+    const endMarker = '}%%';
+    let searchPos = this.position;
+    let endPos = -1;
+    
+    while (searchPos < this.source.length) {
+      const idx = this.source.indexOf(endMarker, searchPos);
+      if (idx === -1) {
+        break;
+      }
+      endPos = idx;
+      break;
+    }
+
+    if (endPos === -1) {
+      // No closing marker found, treat as regular comment
+      while (this.position < this.source.length && this.current() !== '\n') {
+        this.position++;
+      }
+      const content = this.source.slice(start + 2, this.position).trim();
+      this.tokens.push({ type: TokenType.COMMENT, value: content });
+      return;
+    }
+
+    // Extract the content between %%{ and }%%
+    const content = this.source.slice(start + 3, endPos);
+    this.position = endPos + 3; // move past }%%
+
+    // Parse the init directive content
+    this.parseInitDirective(content);
+  }
+
+  /**
+   * Parse init directive content like: init: {"system": "Order Processing", "version": "1.0"}
+   */
+  parseInitDirective(content) {
+    // Expected format: init: { ... }
+    const initMatch = content.match(/^\s*init\s*:\s*(\{[\s\S]*\})\s*$/);
+    if (!initMatch) {
+      this.tokens.push({ type: TokenType.COMMENT, value: content });
+      return;
+    }
+
+    try {
+      // Parse the JSON object
+      const jsonStr = initMatch[1];
+      const config = JSON.parse(jsonStr);
+      
+      this.tokens.push({
+        type: TokenType.INIT_DIRECTIVE,
+        value: config,
+      });
+    } catch {
+      // If JSON parsing fails, treat as comment
+      this.tokens.push({ type: TokenType.COMMENT, value: content });
+    }
   }
 
   /**

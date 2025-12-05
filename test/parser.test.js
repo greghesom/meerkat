@@ -181,5 +181,73 @@ describe('Parser', () => {
       expect(ast.messages[1].annotations.isAsync).toBe(false);
       expect(ast.messages[3].annotations.isAsync).toBe(true);
     });
+
+    test('should parse description directive', () => {
+      const ast = parse(`sequenceDiagram
+    description: Handles customer checkout including payment`);
+      
+      expect(ast.description).toBe('Handles customer checkout including payment');
+    });
+
+    test('should parse description directive with quoted string', () => {
+      const ast = parse(`sequenceDiagram
+    description: "Order processing flow"`);
+      
+      expect(ast.description).toBe('Order processing flow');
+    });
+
+    test('should parse init directive with system', () => {
+      const ast = parse(`%%{init: {"system": "Order Processing Service"}}%%
+sequenceDiagram
+    Client->>API: Request`);
+      
+      expect(ast.system).toBe('Order Processing Service');
+    });
+
+    test('should parse init directive with version', () => {
+      const ast = parse(`%%{init: {"version": "1.2.0"}}%%
+sequenceDiagram
+    Client->>API: Request`);
+      
+      expect(ast.version).toBe('1.2.0');
+    });
+
+    test('should parse init directive with both system and version', () => {
+      const ast = parse(`%%{init: {"system": "Order Processing", "version": "1.0.0"}}%%
+sequenceDiagram
+    Client->>API: Request`);
+      
+      expect(ast.system).toBe('Order Processing');
+      expect(ast.version).toBe('1.0.0');
+    });
+
+    test('should parse complete diagram with all metadata', () => {
+      const source = `%%{init: {"system": "Order Processing Service", "version": "1.2.0"}}%%
+sequenceDiagram
+    title: Order Checkout Flow
+    description: Handles customer checkout including payment and inventory
+
+    participant Client
+    participant API
+    
+    Client->>API: Create Order`;
+
+      const ast = parse(source);
+      
+      expect(ast.system).toBe('Order Processing Service');
+      expect(ast.version).toBe('1.2.0');
+      expect(ast.title).toBe('Order Checkout Flow');
+      expect(ast.description).toBe('Handles customer checkout including payment and inventory');
+      expect(ast.participants).toHaveLength(2);
+      expect(ast.messages).toHaveLength(1);
+    });
+
+    test('should have empty defaults for new metadata fields', () => {
+      const ast = parse('sequenceDiagram');
+      
+      expect(ast.description).toBe('');
+      expect(ast.system).toBe('');
+      expect(ast.version).toBe('');
+    });
   });
 });

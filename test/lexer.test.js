@@ -128,5 +128,63 @@ describe('Lexer', () => {
       const stringToken = tokens.find(t => t.type === TokenType.STRING);
       expect(stringToken).toEqual({ type: TokenType.STRING, value: 'Frontend App' });
     });
+
+    test('should tokenize description keyword', () => {
+      const lexer = new Lexer('description: Order flow handling');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens[0]).toEqual({ type: TokenType.KEYWORD, value: 'description' });
+    });
+
+    test('should tokenize init directive with system and version', () => {
+      const source = '%%{init: {"system": "Order Processing", "version": "1.0.0"}}%%';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.INIT_DIRECTIVE);
+      expect(tokens[0].value).toEqual({
+        system: 'Order Processing',
+        version: '1.0.0'
+      });
+    });
+
+    test('should tokenize init directive with only system', () => {
+      const source = '%%{init: {"system": "My System"}}%%';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.INIT_DIRECTIVE);
+      expect(tokens[0].value).toEqual({ system: 'My System' });
+    });
+
+    test('should tokenize init directive with only version', () => {
+      const source = '%%{init: {"version": "2.0.0"}}%%';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.INIT_DIRECTIVE);
+      expect(tokens[0].value).toEqual({ version: '2.0.0' });
+    });
+
+    test('should handle malformed init directive as comment', () => {
+      const source = '%%{init: not valid json}%%';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.COMMENT);
+    });
+
+    test('should handle init directive without closing marker as comment', () => {
+      const source = '%%{init: {"system": "Test"}';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.COMMENT);
+    });
   });
 });

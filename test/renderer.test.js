@@ -223,4 +223,62 @@ describe('SVGRenderer', () => {
     // Each message should be in its own group with proper vertical offset
     expect(messagesGroup.children.length).toBe(3);
   });
+
+  test('should render title prominently when present', () => {
+    const container = new MockElement('div');
+    const renderer = new SVGRenderer(container);
+    
+    const ast = parseSource(`sequenceDiagram
+    title: Order Checkout Flow
+    Client->>API: Request`);
+    
+    const svg = renderer.render(ast);
+    
+    // Find title text element
+    const titleElement = svg.children.find(
+      (c) => c.tagName === 'text' && c.getAttribute('class') === 'diagram-title'
+    );
+    expect(titleElement).toBeDefined();
+    expect(titleElement.textContent).toBe('Order Checkout Flow');
+    expect(titleElement.getAttribute('font-size')).toBe('18');
+    expect(titleElement.getAttribute('font-weight')).toBe('600');
+    expect(titleElement.getAttribute('text-anchor')).toBe('middle');
+  });
+
+  test('should not render title when not present', () => {
+    const container = new MockElement('div');
+    const renderer = new SVGRenderer(container);
+    
+    const ast = parseSource(`sequenceDiagram
+    Client->>API: Request`);
+    
+    const svg = renderer.render(ast);
+    
+    // Should not find title element
+    const titleElement = svg.children.find(
+      (c) => c.tagName === 'text' && c.getAttribute('class') === 'diagram-title'
+    );
+    expect(titleElement).toBeUndefined();
+  });
+
+  test('should increase diagram height when title is present', () => {
+    const container = new MockElement('div');
+    const renderer = new SVGRenderer(container);
+    
+    const astWithTitle = parseSource(`sequenceDiagram
+    title: Test Title
+    Client->>API: Request`);
+    
+    const astWithoutTitle = parseSource(`sequenceDiagram
+    Client->>API: Request`);
+    
+    const svgWithTitle = renderer.render(astWithTitle);
+    const svgWithoutTitle = renderer.render(astWithoutTitle);
+    
+    const heightWithTitle = parseInt(svgWithTitle.getAttribute('height'));
+    const heightWithoutTitle = parseInt(svgWithoutTitle.getAttribute('height'));
+    
+    // Diagram with title should be taller
+    expect(heightWithTitle).toBeGreaterThan(heightWithoutTitle);
+  });
 });
