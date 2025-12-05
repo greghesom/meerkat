@@ -1112,7 +1112,7 @@
         // Use setTimeout to ensure SVG is rendered before calculating fit
         setTimeout(() => {
           fitToWidth();
-        }, 50);
+        }, INITIAL_FIT_DELAY);
       }
 
       // Reset to config version
@@ -1184,6 +1184,8 @@
       const MAX_ZOOM = 3;
       const ZOOM_STEP = 0.25;
       const WHEEL_ZOOM_FACTOR = 0.1;
+      const PAN_SENSITIVITY = 1.5;
+      const INITIAL_FIT_DELAY = 50;
       const diagramContainer = document.getElementById('diagram-container');
       const diagramScrollContainer = document.getElementById('diagram-scroll-container');
       const zoomLevelDisplay = document.getElementById('zoom-level');
@@ -1325,8 +1327,8 @@
         e.preventDefault();
         const x = e.pageX - diagramScrollContainer.offsetLeft;
         const y = e.pageY - diagramScrollContainer.offsetTop;
-        const walkX = (x - startX) * 1.5;
-        const walkY = (y - startY) * 1.5;
+        const walkX = (x - startX) * PAN_SENSITIVITY;
+        const walkY = (y - startY) * PAN_SENSITIVITY;
         diagramScrollContainer.scrollLeft = scrollLeft - walkX;
         diagramScrollContainer.scrollTop = scrollTop - walkY;
       });
