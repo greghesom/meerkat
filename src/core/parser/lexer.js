@@ -306,8 +306,11 @@ export class Lexer {
     if (this.current() === '#') {
       // Hex color: #RGB, #RRGGBB, or #RRGGBBAA
       color = this.readHexColor();
-    } else if (this.match('rgb(') || this.match('rgba(')) {
-      // RGB/RGBA color: rgb(r, g, b) or rgba(r, g, b, a)
+    } else if (this.match('rgb(')) {
+      // RGB color: rgb(r, g, b)
+      color = this.readRgbColor();
+    } else if (this.match('rgba(')) {
+      // RGBA color: rgba(r, g, b, a)
       color = this.readRgbColor();
     } else if (this.isAlpha(this.current())) {
       // Named color: red, blue, green, etc.

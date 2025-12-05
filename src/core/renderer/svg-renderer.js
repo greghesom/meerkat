@@ -62,6 +62,20 @@ const BADGE_CONFIG = {
 };
 
 /**
+ * Flow legend styling constants
+ */
+const FLOW_LEGEND_CONFIG = {
+  titleWidth: 50,
+  colorBoxSize: 12,
+  colorBoxRadius: 2,
+  colorBoxToTextGap: 4,
+  itemGap: 20,
+  charWidth: 6,
+  fontSize: 10,
+  bottomOffset: 20,
+};
+
+/**
  * SVG Renderer for sequence diagrams
  */
 export class SVGRenderer {
@@ -957,7 +971,7 @@ export class SVGRenderer {
     const group = this.createGroup('flow-legend');
     
     // Position flow legend above the protocol legend
-    const legendY = dimensions.height - dimensions.legendHeight - 20;
+    const legendY = dimensions.height - dimensions.legendHeight - FLOW_LEGEND_CONFIG.bottomOffset;
     const legendStartX = padding;
     
     // Legend title
@@ -974,40 +988,38 @@ export class SVGRenderer {
     group.appendChild(legendTitle);
     
     // Render each flow as a legend item
-    let currentX = legendStartX + 50;
-    const itemHeight = 16;
-    const itemPadding = 8;
-    const charWidth = 6;
+    let currentX = legendStartX + FLOW_LEGEND_CONFIG.titleWidth;
+    const { colorBoxSize, colorBoxRadius, colorBoxToTextGap, itemGap, charWidth, fontSize } = FLOW_LEGEND_CONFIG;
     
     this.flows.forEach(flow => {
       const color = flow.color || '#333333';
       const displayName = flow.displayName || flow.id;
-      const textWidth = displayName.length * charWidth + itemPadding * 2;
+      const textWidth = displayName.length * charWidth;
       
       // Color indicator (small square)
       const colorBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       colorBox.setAttribute('x', currentX);
-      colorBox.setAttribute('y', legendY - 6);
-      colorBox.setAttribute('width', 12);
-      colorBox.setAttribute('height', 12);
-      colorBox.setAttribute('rx', '2');
+      colorBox.setAttribute('y', legendY - colorBoxSize / 2);
+      colorBox.setAttribute('width', colorBoxSize);
+      colorBox.setAttribute('height', colorBoxSize);
+      colorBox.setAttribute('rx', colorBoxRadius);
       colorBox.setAttribute('fill', color);
       colorBox.setAttribute('class', 'flow-color-indicator');
       group.appendChild(colorBox);
       
       // Flow name text
       const flowLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-      flowLabel.setAttribute('x', currentX + 16);
+      flowLabel.setAttribute('x', currentX + colorBoxSize + colorBoxToTextGap);
       flowLabel.setAttribute('y', legendY);
       flowLabel.setAttribute('text-anchor', 'start');
       flowLabel.setAttribute('dominant-baseline', 'middle');
       flowLabel.setAttribute('font-family', 'sans-serif');
-      flowLabel.setAttribute('font-size', '10');
+      flowLabel.setAttribute('font-size', fontSize);
       flowLabel.setAttribute('fill', '#333333');
       flowLabel.textContent = displayName;
       group.appendChild(flowLabel);
       
-      currentX += textWidth + 20;
+      currentX += colorBoxSize + colorBoxToTextGap + textWidth + itemGap;
     });
     
     this.svg.appendChild(group);

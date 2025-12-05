@@ -239,7 +239,8 @@ export class Parser {
     // Check for duplicate flow ids
     const existingFlow = diagram.flows.find(f => f.id === token.id);
     if (existingFlow) {
-      // Update display name and color if flow already exists
+      // Update display name; only update color if a new one is explicitly specified
+      // This allows re-declaring a flow to update the name while preserving the color
       existingFlow.displayName = token.displayName;
       if (token.color) {
         existingFlow.color = token.color;
