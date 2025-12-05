@@ -490,4 +490,223 @@ describe('SVGRenderer', () => {
       expect(messageText.textContent).toBe('Get Products');
     });
   });
+
+  describe('Request Type Annotations', () => {
+    test('should render request type badge with protocol', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      Client->>API: Create Order @type(JSON)`);
+      
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      
+      // Should have a message-label-group (containing text and type badge)
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      expect(labelGroup).toBeDefined();
+      
+      // Should contain the request-type-badge group
+      const typeBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'request-type-badge'
+      );
+      expect(typeBadge).toBeDefined();
+    });
+
+    test('should render request type with correct color for JSON', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Request @type(JSON)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      const typeBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'request-type-badge'
+      );
+      
+      // Find the type rect (JSON should be green: #4caf50)
+      const typeRect = typeBadge.children.find(
+        (c) => c.tagName === 'rect' && c.getAttribute('class')?.includes('request-type-json')
+      );
+      expect(typeRect).toBeDefined();
+      expect(typeRect.getAttribute('fill')).toBe('#4caf50');
+    });
+
+    test('should render different colors for different request types', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const typesAndColors = {
+        'JSON': '#4caf50',
+        'SOAP': '#ff9800',
+        'XML': '#9c27b0',
+        'RFC_SAP': '#1976d2',
+        'GraphQL': '#e535ab',
+        'gRPC': '#244c5a',
+        'BINARY': '#607d8b',
+      };
+      
+      Object.entries(typesAndColors).forEach(([type, expectedColor]) => {
+        const ast = parseSource(`Client->>API: Request @type(${type})`);
+        const svg = renderer.render(ast);
+        
+        const messagesGroup = svg.children.find((c) => c.getAttribute('class') === 'messages');
+        const labelGroup = messagesGroup.children[0].children.find(
+          (c) => c.getAttribute('class') === 'message-label-group'
+        );
+        const typeBadge = labelGroup.children.find(
+          (c) => c.getAttribute('class') === 'request-type-badge'
+        );
+        
+        const typeRect = typeBadge.children.find((c) => c.tagName === 'rect');
+        expect(typeRect.getAttribute('fill')).toBe(expectedColor);
+      });
+    });
+
+    test('should render custom request type with default color', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Request @type(CUSTOM_PROTOCOL)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const labelGroup = messagesGroup.children[0].children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      const typeBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'request-type-badge'
+      );
+      
+      // Custom types should use the default gray color: #757575
+      const typeRect = typeBadge.children.find((c) => c.tagName === 'rect');
+      expect(typeRect.getAttribute('fill')).toBe('#757575');
+    });
+
+    test('should include tooltip with protocol info', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Request @type(JSON)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const labelGroup = messagesGroup.children[0].children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      const typeBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'request-type-badge'
+      );
+      
+      // Find the title element (tooltip)
+      const tooltip = typeBadge.children.find((c) => c.tagName === 'title');
+      expect(tooltip).toBeDefined();
+      expect(tooltip.textContent).toBe('Protocol: JSON');
+    });
+
+    test('should render both request type and path badges together', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Create Order @type(JSON) @path(POST /orders)');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const labelGroup = messagesGroup.children[0].children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      // Should have both badges
+      const typeBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'request-type-badge'
+      );
+      const pathBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'api-path-badge'
+      );
+      
+      expect(typeBadge).toBeDefined();
+      expect(pathBadge).toBeDefined();
+    });
+
+    test('should render protocol legend when request types are used', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      Client->>API: Request @type(JSON)
+      API->>SAP: Call @type(RFC_SAP)`);
+      
+      const svg = renderer.render(ast);
+      
+      // Find protocol legend group
+      const legendGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'protocol-legend'
+      );
+      expect(legendGroup).toBeDefined();
+      
+      // Should have legend title and badges for JSON and RFC_SAP
+      const texts = legendGroup.children.filter((c) => c.tagName === 'text');
+      expect(texts.length).toBeGreaterThanOrEqual(1); // At least the title
+      
+      // Should have type badges
+      const rects = legendGroup.children.filter((c) => c.tagName === 'rect');
+      expect(rects.length).toBe(2); // JSON and RFC_SAP
+    });
+
+    test('should not render protocol legend when no request types are used', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      Client->>API: Request
+      API-->>Client: Response`);
+      
+      const svg = renderer.render(ast);
+      
+      // Should not find protocol legend
+      const legendGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'protocol-legend'
+      );
+      expect(legendGroup).toBeUndefined();
+    });
+
+    test('should increase diagram height when request type annotations are present', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const astWithType = parseSource(`sequenceDiagram
+      Client->>API: Request @type(JSON)`);
+      
+      const astWithoutType = parseSource(`sequenceDiagram
+      Client->>API: Request`);
+      
+      const svgWithType = renderer.render(astWithType);
+      const svgWithoutType = renderer.render(astWithoutType);
+      
+      const heightWithType = parseInt(svgWithType.getAttribute('height'));
+      const heightWithoutType = parseInt(svgWithoutType.getAttribute('height'));
+      
+      // Diagram with request type annotations should be taller (includes legend)
+      expect(heightWithType).toBeGreaterThan(heightWithoutType);
+    });
+  });
 });
