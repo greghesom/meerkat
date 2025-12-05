@@ -1129,4 +1129,169 @@ describe('SVGRenderer', () => {
       expect(rect.getAttribute('fill')).toBe('#4caf50');
     });
   });
+
+  describe('Flow Color Annotations', () => {
+    test('should render flow legend when flows are defined', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      %%flow error_flow "Error Flow" #EF4444
+      Client->>API: Request`);
+      
+      const svg = renderer.render(ast);
+      
+      // Find flow legend group
+      const legendGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'flow-legend'
+      );
+      expect(legendGroup).toBeDefined();
+      
+      // Should have legend title
+      const title = legendGroup.children.find(
+        (c) => c.tagName === 'text' && c.textContent === 'Flows:'
+      );
+      expect(title).toBeDefined();
+    });
+
+    test('should not render flow legend when no flows are defined', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      Client->>API: Request`);
+      
+      const svg = renderer.render(ast);
+      
+      // Should not find flow legend
+      const legendGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'flow-legend'
+      );
+      expect(legendGroup).toBeUndefined();
+    });
+
+    test('should render flow legend items with correct colors', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      %%flow error_flow "Error Flow" #EF4444
+      Client->>API: Request`);
+      
+      const svg = renderer.render(ast);
+      
+      const legendGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'flow-legend'
+      );
+      
+      // Should have color boxes with correct colors
+      const colorBoxes = legendGroup.children.filter(
+        (c) => c.tagName === 'rect' && c.getAttribute('class') === 'flow-color-indicator'
+      );
+      expect(colorBoxes).toHaveLength(2);
+      expect(colorBoxes[0].getAttribute('fill')).toBe('#22C55E');
+      expect(colorBoxes[1].getAttribute('fill')).toBe('#EF4444');
+    });
+
+    test('should apply flow color to message arrow', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      Client->>API: Request @flow(happy_path)`);
+      
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const line = messageGroup.children.find((c) => c.tagName === 'line');
+      
+      expect(line.getAttribute('stroke')).toBe('#22C55E');
+    });
+
+    test('should apply flow color to message label', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow error_flow "Error Flow" #EF4444
+      Client->>API: Request @flow(error_flow)`);
+      
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const text = messageGroup.children.find((c) => c.tagName === 'text');
+      
+      expect(text.getAttribute('fill')).toBe('#EF4444');
+    });
+
+    test('should create flow-specific arrow markers in defs', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      Client->>API: Request`);
+      
+      const svg = renderer.render(ast);
+      
+      // Find defs element
+      const defs = svg.children.find((c) => c.tagName === 'defs');
+      expect(defs).toBeDefined();
+      
+      // Should have flow-specific arrow markers
+      const markers = defs.children.filter((c) => c.tagName === 'marker');
+      const flowMarker = markers.find((m) => m.getAttribute('id') === 'arrow-filled-happy_path');
+      expect(flowMarker).toBeDefined();
+    });
+
+    test('should increase diagram height when flows are defined', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const astWithFlows = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      Client->>API: Request`);
+      
+      const astWithoutFlows = parseSource(`sequenceDiagram
+      Client->>API: Request`);
+      
+      const svgWithFlows = renderer.render(astWithFlows);
+      const svgWithoutFlows = renderer.render(astWithoutFlows);
+      
+      const heightWithFlows = parseInt(svgWithFlows.getAttribute('height'));
+      const heightWithoutFlows = parseInt(svgWithoutFlows.getAttribute('height'));
+      
+      // Diagram with flows should be taller (includes flow legend)
+      expect(heightWithFlows).toBeGreaterThan(heightWithoutFlows);
+    });
+
+    test('should use default color for flow-assigned messages when no color specified', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow simple_flow "Simple Flow"
+      Client->>API: Request @flow(simple_flow)`);
+      
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const line = messageGroup.children.find((c) => c.tagName === 'line');
+      
+      // Should use first default color
+      expect(line.getAttribute('stroke')).toBe('#22C55E');
+    });
+  });
 });

@@ -299,6 +299,21 @@ export class Lexer {
       }
     }
 
+    this.skipWhitespace();
+
+    // Read optional color specification (hex, rgb, or named color)
+    let color = null;
+    if (this.current() === '#') {
+      // Hex color: #RGB, #RRGGBB, or #RRGGBBAA
+      color = this.readHexColor();
+    } else if (this.match('rgb(') || this.match('rgba(')) {
+      // RGB/RGBA color: rgb(r, g, b) or rgba(r, g, b, a)
+      color = this.readRgbColor();
+    } else if (this.isAlpha(this.current())) {
+      // Named color: red, blue, green, etc.
+      color = this.readNamedColor();
+    }
+
     // Skip to end of line
     while (this.position < this.source.length && this.current() !== '\n') {
       this.position++;
@@ -308,7 +323,57 @@ export class Lexer {
       type: TokenType.FLOW_DIRECTIVE,
       id,
       displayName,
+      color,
     });
+  }
+
+  /**
+   * Read a hex color starting with #
+   * Supports: #RGB, #RRGGBB, #RRGGBBAA
+   */
+  readHexColor() {
+    const start = this.position;
+    this.position++; // skip #
+    while (this.position < this.source.length && this.isHexDigit(this.current())) {
+      this.position++;
+    }
+    return this.source.slice(start, this.position);
+  }
+
+  /**
+   * Check if character is a valid hex digit
+   */
+  isHexDigit(ch) {
+    return (ch >= '0' && ch <= '9') || 
+           (ch >= 'a' && ch <= 'f') || 
+           (ch >= 'A' && ch <= 'F');
+  }
+
+  /**
+   * Read an RGB or RGBA color
+   * Supports: rgb(r, g, b) and rgba(r, g, b, a)
+   */
+  readRgbColor() {
+    const start = this.position;
+    // Read until closing parenthesis
+    while (this.position < this.source.length && this.current() !== ')' && this.current() !== '\n') {
+      this.position++;
+    }
+    if (this.current() === ')') {
+      this.position++; // include closing paren
+    }
+    return this.source.slice(start, this.position);
+  }
+
+  /**
+   * Read a named color (alphabetic characters only)
+   */
+  readNamedColor() {
+    const start = this.position;
+    while (this.position < this.source.length && this.isAlpha(this.current())) {
+      this.position++;
+    }
+    return this.source.slice(start, this.position);
   }
 
   /**
