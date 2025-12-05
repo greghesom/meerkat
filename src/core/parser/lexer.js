@@ -252,7 +252,7 @@ export class Lexer {
   }
 
   /**
-   * Read annotation tokens like @path(GET /api/users) or @sync
+   * Read annotation tokens like @path(GET /api/users), @sync, or @request{name: string}
    */
   readAnnotation() {
     this.position++; // skip @
@@ -275,6 +275,18 @@ export class Lexer {
       }
       value = this.source.slice(valueStart, this.position);
       this.position++; // skip )
+    } else if (this.current() === '{') {
+      // Support curly brace syntax for @request{} and @response{}
+      this.position++; // skip {
+      const valueStart = this.position;
+      let depth = 1;
+      while (depth > 0 && this.position < this.source.length) {
+        if (this.current() === '{') depth++;
+        if (this.current() === '}') depth--;
+        if (depth > 0) this.position++;
+      }
+      value = this.source.slice(valueStart, this.position);
+      this.position++; // skip }
     }
 
     this.tokens.push({
