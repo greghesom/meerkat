@@ -1,0 +1,132 @@
+import { Lexer, TokenType } from '../src/core/parser/lexer.js';
+
+describe('Lexer', () => {
+  describe('tokenize', () => {
+    test('should tokenize sequenceDiagram keyword', () => {
+      const lexer = new Lexer('sequenceDiagram');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toEqual({ type: TokenType.KEYWORD, value: 'sequenceDiagram' });
+    });
+
+    test('should tokenize participant declaration', () => {
+      const lexer = new Lexer('participant Client');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(2);
+      expect(tokens[0]).toEqual({ type: TokenType.KEYWORD, value: 'participant' });
+      expect(tokens[1]).toEqual({ type: TokenType.IDENTIFIER, value: 'Client' });
+    });
+
+    test('should tokenize participant with alias', () => {
+      const lexer = new Lexer('participant FE as Frontend');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(4);
+      expect(tokens[0]).toEqual({ type: TokenType.KEYWORD, value: 'participant' });
+      expect(tokens[1]).toEqual({ type: TokenType.IDENTIFIER, value: 'FE' });
+      expect(tokens[2]).toEqual({ type: TokenType.AS, value: 'as' });
+      expect(tokens[3]).toEqual({ type: TokenType.IDENTIFIER, value: 'Frontend' });
+    });
+
+    test('should tokenize solid arrow with filled head', () => {
+      const lexer = new Lexer('Client->>API');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(3);
+      expect(tokens[0]).toEqual({ type: TokenType.IDENTIFIER, value: 'Client' });
+      expect(tokens[1]).toEqual({ type: TokenType.ARROW, value: '->>' });
+      expect(tokens[2]).toEqual({ type: TokenType.IDENTIFIER, value: 'API' });
+    });
+
+    test('should tokenize dashed arrow with filled head', () => {
+      const lexer = new Lexer('API-->>Client');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(3);
+      expect(tokens[0]).toEqual({ type: TokenType.IDENTIFIER, value: 'API' });
+      expect(tokens[1]).toEqual({ type: TokenType.ARROW, value: '-->>' });
+      expect(tokens[2]).toEqual({ type: TokenType.IDENTIFIER, value: 'Client' });
+    });
+
+    test('should tokenize solid arrow with open head', () => {
+      const lexer = new Lexer('Client->API');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(3);
+      expect(tokens[1]).toEqual({ type: TokenType.ARROW, value: '->' });
+    });
+
+    test('should tokenize dashed arrow with open head', () => {
+      const lexer = new Lexer('Client-->API');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(3);
+      expect(tokens[1]).toEqual({ type: TokenType.ARROW, value: '-->' });
+    });
+
+    test('should tokenize message with colon', () => {
+      const lexer = new Lexer('Client->>API: Create Order');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toContainEqual({ type: TokenType.COLON, value: ':' });
+      expect(tokens).toContainEqual({ type: TokenType.IDENTIFIER, value: 'Create' });
+      expect(tokens).toContainEqual({ type: TokenType.IDENTIFIER, value: 'Order' });
+    });
+
+    test('should tokenize annotations', () => {
+      const lexer = new Lexer('Client->>API: Request @sync');
+      const tokens = lexer.tokenize();
+      
+      const annotation = tokens.find(t => t.type === TokenType.ANNOTATION);
+      expect(annotation).toEqual({ type: TokenType.ANNOTATION, name: 'sync', value: null });
+    });
+
+    test('should tokenize annotations with values', () => {
+      const lexer = new Lexer('@path(GET /api/users)');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toEqual({
+        type: TokenType.ANNOTATION,
+        name: 'path',
+        value: 'GET /api/users',
+      });
+    });
+
+    test('should tokenize comments', () => {
+      const lexer = new Lexer('%% This is a comment');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.COMMENT);
+      expect(tokens[0].value).toBe('This is a comment');
+    });
+
+    test('should tokenize multiline input', () => {
+      const source = `sequenceDiagram
+    Client->>API: Request
+    API-->>Client: Response`;
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      const keywords = tokens.filter(t => t.type === TokenType.KEYWORD);
+      expect(keywords).toHaveLength(1);
+      expect(keywords[0].value).toBe('sequenceDiagram');
+
+      const arrows = tokens.filter(t => t.type === TokenType.ARROW);
+      expect(arrows).toHaveLength(2);
+      expect(arrows[0].value).toBe('->>');
+      expect(arrows[1].value).toBe('-->>');
+    });
+
+    test('should tokenize quoted strings', () => {
+      const lexer = new Lexer('participant FE as "Frontend App"');
+      const tokens = lexer.tokenize();
+      
+      const stringToken = tokens.find(t => t.type === TokenType.STRING);
+      expect(stringToken).toEqual({ type: TokenType.STRING, value: 'Frontend App' });
+    });
+  });
+});

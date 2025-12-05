@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sequence Diagram Visualizer - Demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f5f5f5;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      .config-selector {
+        max-width: 1400px;
+        margin: 0 auto 20px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+
+      .config-selector label {
+        font-weight: 500;
+        margin-right: 10px;
+        color: #333;
+      }
+
+      .config-selector select {
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        min-width: 250px;
+        cursor: pointer;
+      }
+
+      .config-selector select:focus {
+        outline: none;
+        border-color: #3b82f6;
+      }
+
+      .diagram-info {
+        margin-top: 10px;
+        padding: 10px;
+        background: #f9fafb;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #666;
+      }
+
+      .diagram-info strong {
+        color: #333;
+      }
+
+      .container {
+        display: flex;
+        gap: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      .editor-panel {
+        flex: 1;
+        min-width: 300px;
+      }
+
+      .diagram-panel {
+        flex: 2;
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: auto;
+      }
+
+      textarea {
+        width: 100%;
+        height: 400px;
+        padding: 15px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 13px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        resize: vertical;
+        background: #fff;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      button {
+        padding: 10px 20px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        flex: 1;
+      }
+
+      button:hover {
+        background: #2563eb;
+      }
+
+      button.secondary {
+        background: #6b7280;
+      }
+
+      button.secondary:hover {
+        background: #4b5563;
+      }
+
+      #diagram-container {
+        min-height: 300px;
+      }
+
+      .legend {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f9fafb;
+        border-radius: 6px;
+      }
+
+      .legend h3 {
+        margin-bottom: 10px;
+        font-size: 14px;
+        color: #666;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+
+      .arrow-demo {
+        display: inline-block;
+        width: 60px;
+        height: 2px;
+        background: #333;
+        position: relative;
+      }
+
+      .arrow-demo.dashed {
+        background: repeating-linear-gradient(
+          to right,
+          #333 0,
+          #333 5px,
+          transparent 5px,
+          transparent 8px
+        );
+      }
+
+      .arrow-demo::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: -4px;
+        border: 5px solid transparent;
+        border-left-color: #333;
+      }
+
+      .instructions {
+        margin-top: 15px;
+        padding: 15px;
+        background: #e0f2fe;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #0369a1;
+      }
+
+      .instructions h4 {
+        margin-bottom: 8px;
+        color: #0c4a6e;
+      }
+
+      .instructions code {
+        background: #bae6fd;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: monospace;
+      }
+
+      /* SVG diagram styles */
+      .sequence-diagram .participant-box {
+        fill: #fff;
+        stroke: #333;
+        stroke-width: 2;
+      }
+
+      .sequence-diagram .participant-label {
+        font-size: 14px;
+        font-weight: 500;
+        fill: #333;
+      }
+
+      .sequence-diagram .message-label {
+        font-size: 12px;
+      }
+
+      .sequence-diagram .lifeline {
+        stroke: #ddd;
+        stroke-width: 1;
+        stroke-dasharray: 5, 5;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Meerkat - Sequence Diagram Visualizer</h1>
+
+    <div class="config-selector">
+      <label for="diagram-select">Select Flow:</label>
+      <select id="diagram-select">
+        <option value="">Loading diagrams...</option>
+      </select>
+      <div id="diagram-info" class="diagram-info" style="display: none;">
+        <strong>Description:</strong> <span id="diagram-description"></span>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="editor-panel">
+        <textarea id="source" placeholder="Loading diagram..."></textarea>
+        <div class="button-group">
+          <button id="render-btn">Render Diagram</button>
+          <button id="reset-btn" class="secondary">Reset to Config</button>
+        </div>
+
+        <div class="legend">
+          <h3>Arrow Types</h3>
+          <div class="legend-item">
+            <span class="arrow-demo"></span>
+            <span>Solid arrow (->>, ->) - Synchronous</span>
+          </div>
+          <div class="legend-item">
+            <span class="arrow-demo dashed"></span>
+            <span>Dashed arrow (-->>, -->) - Asynchronous</span>
+          </div>
+        </div>
+
+        <div class="instructions">
+          <h4>Adding New Diagrams</h4>
+          <p>Create a new JSON file in the <code>diagrams/</code> folder and add it to <code>diagrams/config.json</code></p>
+        </div>
+      </div>
+
+      <div class="diagram-panel">
+        <div id="diagram-container"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { SequenceVisualizer } from './src/index.js';
+
+      // Initialize visualizer
+      const visualizer = new SequenceVisualizer('#diagram-container', {
+        theme: 'light',
+      });
+
+      // State
+      let config = null;
+      let currentDiagramData = null;
+      let diagramNames = new Map(); // Cache for diagram names
+
+      // Show error message in UI
+      function showError(message) {
+        document.getElementById('source').value = '';
+        document.getElementById('source').placeholder = message;
+        document.getElementById('diagram-description').textContent = message;
+        document.getElementById('diagram-info').style.display = 'block';
+      }
+
+      // Load configuration
+      async function loadConfig() {
+        try {
+          const response = await fetch('./diagrams/config.json');
+          if (!response.ok) {
+            throw new Error(`Failed to load config: ${response.status}`);
+          }
+          config = await response.json();
+          
+          // Pre-load diagram names for better UX
+          await loadDiagramNames();
+          populateDiagramSelect();
+          
+          // Load default diagram
+          if (config.defaultDiagram) {
+            document.getElementById('diagram-select').value = config.defaultDiagram;
+            await loadDiagram(config.defaultDiagram);
+          }
+        } catch (error) {
+          console.error('Failed to load config:', error);
+          document.getElementById('diagram-select').innerHTML = 
+            '<option value="">Error loading config</option>';
+          showError('Error: Could not load configuration. Check that diagrams/config.json exists.');
+        }
+      }
+
+      // Pre-load diagram names for dropdown
+      async function loadDiagramNames() {
+        for (const d of config.diagrams) {
+          try {
+            const response = await fetch(`./diagrams/${d.file}`);
+            if (response.ok) {
+              const data = await response.json();
+              diagramNames.set(d.id, data.name || d.id);
+            } else {
+              diagramNames.set(d.id, d.id);
+            }
+          } catch {
+            diagramNames.set(d.id, d.id);
+          }
+        }
+      }
+
+      // Populate diagram dropdown with friendly names
+      function populateDiagramSelect() {
+        const select = document.getElementById('diagram-select');
+        select.innerHTML = config.diagrams.map(d => 
+          `<option value="${d.id}">${diagramNames.get(d.id) || d.id}</option>`
+        ).join('');
+      }
+
+      // Load a specific diagram from config
+      async function loadDiagram(diagramId) {
+        const diagramEntry = config.diagrams.find(d => d.id === diagramId);
+        if (!diagramEntry) return;
+
+        document.getElementById('source').placeholder = 'Loading diagram...';
+
+        try {
+          const response = await fetch(`./diagrams/${diagramEntry.file}`);
+          if (!response.ok) {
+            throw new Error(`Failed to load diagram: ${response.status}`);
+          }
+          currentDiagramData = await response.json();
+          
+          // Update UI
+          document.getElementById('source').value = currentDiagramData.diagram;
+          document.getElementById('source').placeholder = 'Enter sequence diagram...';
+          document.getElementById('diagram-description').textContent = 
+            currentDiagramData.description || 'No description available';
+          document.getElementById('diagram-info').style.display = 'block';
+          
+          // Render diagram
+          renderDiagram();
+        } catch (error) {
+          console.error('Failed to load diagram:', error);
+          showError(`Error: Could not load diagram "${diagramId}". Check that the file exists.`);
+        }
+      }
+
+      // Render the current diagram
+      function renderDiagram() {
+        const source = document.getElementById('source').value;
+        const result = visualizer.render(source);
+        if (!result.success) {
+          console.error('Failed to render:', result.error);
+        }
+      }
+
+      // Reset to config version
+      function resetToConfig() {
+        if (currentDiagramData) {
+          document.getElementById('source').value = currentDiagramData.diagram;
+          renderDiagram();
+        }
+      }
+
+      // Event listeners
+      document.getElementById('diagram-select').addEventListener('change', (e) => {
+        if (e.target.value) {
+          loadDiagram(e.target.value);
+        }
+      });
+
+      document.getElementById('render-btn').addEventListener('click', renderDiagram);
+      document.getElementById('reset-btn').addEventListener('click', resetToConfig);
+
+      document.getElementById('source').addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+          renderDiagram();
+        }
+      });
+
+      // Initialize
+      loadConfig();
+    </script>
+  </body>
+</html>

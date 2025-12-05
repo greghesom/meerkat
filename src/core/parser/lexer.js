@@ -1,0 +1,256 @@
+/**
+ * Token types for sequence diagram syntax
+ */
+export const TokenType = {
+  // Standard tokens
+  KEYWORD: 'KEYWORD',
+  IDENTIFIER: 'IDENTIFIER',
+  STRING: 'STRING',
+  ARROW: 'ARROW',
+  NEWLINE: 'NEWLINE',
+  COLON: 'COLON',
+  AS: 'AS',
+
+  // Extended tokens
+  ANNOTATION: 'ANNOTATION',
+  COMMENT: 'COMMENT',
+};
+
+/**
+ * Arrow patterns for sequence diagrams
+ */
+const ARROW_PATTERNS = [
+  '->>', // solid arrow with filled head
+  '-->>',// dashed arrow with filled head
+  '->',  // solid arrow with open head
+  '-->',  // dashed arrow with open head
+];
+
+/**
+ * Reserved keywords in sequence diagram syntax
+ */
+const KEYWORDS = [
+  'sequenceDiagram',
+  'participant',
+  'actor',
+  'Note',
+  'over',
+  'right',
+  'left',
+  'of',
+  'title',
+];
+
+/**
+ * Lexer class for tokenizing diagram source
+ */
+export class Lexer {
+  constructor(source) {
+    this.source = source;
+    this.position = 0;
+    this.tokens = [];
+  }
+
+  /**
+   * Tokenize the source and return array of tokens
+   */
+  tokenize() {
+    while (this.position < this.source.length) {
+      this.skipWhitespace();
+
+      if (this.position >= this.source.length) break;
+
+      // Check for comments
+      if (this.match('%%')) {
+        this.readComment();
+        continue;
+      }
+
+      // Check for annotations (@path, @type, etc.)
+      if (this.match('@')) {
+        this.readAnnotation();
+        continue;
+      }
+
+      // Check for arrows
+      const arrow = this.matchArrow();
+      if (arrow) {
+        this.tokens.push({ type: TokenType.ARROW, value: arrow });
+        this.position += arrow.length;
+        continue;
+      }
+
+      // Check for colon
+      if (this.current() === ':') {
+        this.tokens.push({ type: TokenType.COLON, value: ':' });
+        this.position++;
+        continue;
+      }
+
+      // Check for newline
+      if (this.current() === '\n') {
+        this.tokens.push({ type: TokenType.NEWLINE });
+        this.position++;
+        continue;
+      }
+
+      // Check for quoted strings
+      if (this.current() === '"' || this.current() === "'") {
+        this.readString();
+        continue;
+      }
+
+      // Check for identifiers/keywords
+      if (this.isAlpha(this.current()) || this.current() === '_') {
+        this.readIdentifier();
+        continue;
+      }
+
+      // Skip unknown characters
+      this.position++;
+    }
+
+    return this.tokens;
+  }
+
+  /**
+   * Get current character
+   */
+  current() {
+    return this.source[this.position];
+  }
+
+  /**
+   * Check if we match a prefix at current position
+   */
+  match(prefix) {
+    return this.source.slice(this.position, this.position + prefix.length) === prefix;
+  }
+
+  /**
+   * Check if current position matches an arrow pattern
+   */
+  matchArrow() {
+    for (const arrow of ARROW_PATTERNS) {
+      if (this.match(arrow)) {
+        return arrow;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Skip whitespace characters (except newlines)
+   */
+  skipWhitespace() {
+    while (this.position < this.source.length) {
+      const ch = this.current();
+      if (ch === ' ' || ch === '\t' || ch === '\r') {
+        this.position++;
+      } else {
+        break;
+      }
+    }
+  }
+
+  /**
+   * Check if character is alphabetic
+   */
+  isAlpha(ch) {
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+  }
+
+  /**
+   * Check if character is alphanumeric
+   */
+  isAlphaNumeric(ch) {
+    return this.isAlpha(ch) || (ch >= '0' && ch <= '9') || ch === '_';
+  }
+
+  /**
+   * Read a comment (lines starting with %%)
+   */
+  readComment() {
+    const start = this.position;
+    this.position += 2; // skip %%
+
+    while (this.position < this.source.length && this.current() !== '\n') {
+      this.position++;
+    }
+
+    const content = this.source.slice(start + 2, this.position).trim();
+    this.tokens.push({ type: TokenType.COMMENT, value: content });
+  }
+
+  /**
+   * Read annotation tokens like @path(GET /api/users) or @sync
+   */
+  readAnnotation() {
+    this.position++; // skip @
+
+    const nameStart = this.position;
+    while (this.position < this.source.length && this.isAlphaNumeric(this.current())) {
+      this.position++;
+    }
+    const name = this.source.slice(nameStart, this.position);
+
+    let value = null;
+    if (this.current() === '(') {
+      this.position++; // skip (
+      const valueStart = this.position;
+      let depth = 1;
+      while (depth > 0 && this.position < this.source.length) {
+        if (this.current() === '(') depth++;
+        if (this.current() === ')') depth--;
+        if (depth > 0) this.position++;
+      }
+      value = this.source.slice(valueStart, this.position);
+      this.position++; // skip )
+    }
+
+    this.tokens.push({
+      type: TokenType.ANNOTATION,
+      name,
+      value,
+    });
+  }
+
+  /**
+   * Read a quoted string
+   */
+  readString() {
+    const quote = this.current();
+    this.position++; // skip opening quote
+
+    const start = this.position;
+    while (this.position < this.source.length && this.current() !== quote) {
+      this.position++;
+    }
+
+    const value = this.source.slice(start, this.position);
+    this.position++; // skip closing quote
+
+    this.tokens.push({ type: TokenType.STRING, value });
+  }
+
+  /**
+   * Read an identifier or keyword
+   */
+  readIdentifier() {
+    const start = this.position;
+    while (this.position < this.source.length && this.isAlphaNumeric(this.current())) {
+      this.position++;
+    }
+
+    const value = this.source.slice(start, this.position);
+
+    // Check if it's a keyword
+    if (KEYWORDS.includes(value)) {
+      this.tokens.push({ type: TokenType.KEYWORD, value });
+    } else if (value.toLowerCase() === 'as') {
+      this.tokens.push({ type: TokenType.AS, value });
+    } else {
+      this.tokens.push({ type: TokenType.IDENTIFIER, value });
+    }
+  }
+}

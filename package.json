@@ -1,0 +1,19 @@
+{
+  "name": "meerkat",
+  "version": "1.0.0",
+  "description": "A powerful interactive sequence diagram tool with extended Mermaid syntax for visualizing architectural flows, API interactions, and multi-path scenarios.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "dev": "npx http-server . -p 8080 -o",
+    "lint": "eslint src/"
+  },
+  "keywords": ["mermaid", "sequence-diagram", "visualization"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.57.0"
+  }
+}

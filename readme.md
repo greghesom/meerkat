@@ -7,21 +7,20 @@ A powerful interactive sequence diagram tool with extended Mermaid syntax for vi
 
 ## Features
 
+- **Configuration-Driven** - Define diagrams in JSON files for easy management and switching
 - **Extended Mermaid Syntax** - Define API paths, request types, sync/async behaviors
 - **Multi-Flow Support** - Visualize multiple scenarios with color-coded paths
-- **Interactive Timeline** - Scrub through sequences step-by-step
+- **Local-Only Execution** - Runs entirely in your browser, no server required
 - **Live Editor** - Real-time preview with syntax highlighting
-- **Export Options** - PNG, SVG, shareable URLs
 
 ## Table of Contents
 
 - [Quick Start](#quick-start)
+- [Running Locally](#running-locally)
+- [Configuration](#configuration)
 - [Extended Syntax Reference](#extended-syntax-reference)
 - [Architecture](#architecture)
 - [Technical Implementation](#technical-implementation)
-- [Component Reference](#component-reference)
-- [API Documentation](#api-documentation)
-- [Styling Guide](#styling-guide)
 - [Contributing](#contributing)
 
 ---
@@ -32,51 +31,111 @@ A powerful interactive sequence diagram tool with extended Mermaid syntax for vi
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/sequence-diagram-visualizer.git
-cd sequence-diagram-visualizer
+git clone https://github.com/greghesom/meerkat.git
+cd meerkat
 
 # Install dependencies
 npm install
+```
 
-# Start development server
+### Running Locally
+
+This project is designed to run locally without any hosted server. You can use any local HTTP server:
+
+```bash
+# Option 1: Using the built-in dev server
 npm run dev
+
+# Option 2: Using Python (if installed)
+python -m http.server 8080
+
+# Option 3: Using npx (Node.js)
+npx http-server . -p 8080
 ```
 
-### Basic Usage
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sequence Diagram Visualizer</title>
-    <link rel="stylesheet" href="dist/sequence-visualizer.css" />
-  </head>
-  <body>
-    <div id="diagram-container"></div>
-
-    <script src="dist/sequence-visualizer.js"></script>
-    <script>
-      const diagram = new SequenceVisualizer("#diagram-container", {
-        theme: "light",
-        showTimeline: true,
-        showEditor: true,
-      });
-
-      diagram.render(`
-      sequenceDiagram
-        title: Order Processing Flow
-        Client->>API: Create Order @path(POST /orders) @type(JSON)
-        API->>Database: Save Order @sync
-        API-->>Client: Order Created
-    `);
-    </script>
-  </body>
-</html>
-```
+Then open your browser to `http://localhost:8080`
 
 ---
+
+## Configuration
+
+### Overview
+
+All sequence diagrams are defined in configuration files within the `diagrams/` folder. This makes it easy to:
+- Switch between different flows using the dropdown
+- Add new diagrams without modifying code
+- Share diagram configurations with your team
+
+### Directory Structure
+
+```
+diagrams/
+├── config.json              # Main configuration file
+├── order-processing.json    # Individual diagram definitions
+├── user-authentication.json
+└── payment-flow.json
+```
+
+### Main Configuration (config.json)
+
+The `diagrams/config.json` file defines available diagrams:
+
+```json
+{
+  "defaultDiagram": "order-processing",
+  "diagrams": [
+    {
+      "id": "order-processing",
+      "file": "order-processing.json"
+    },
+    {
+      "id": "user-authentication",
+      "file": "user-authentication.json"
+    }
+  ]
+}
+```
+
+### Diagram Definition Files
+
+Each diagram is defined in its own JSON file:
+
+```json
+{
+  "name": "Order Processing",
+  "description": "Basic order processing flow between client, API, and database",
+  "diagram": "sequenceDiagram\n    participant Client\n    participant API\n    Client->>API: Create Order\n    API-->>Client: Order Created"
+}
+```
+
+### Adding a New Diagram
+
+1. Create a new JSON file in the `diagrams/` folder:
+   ```json
+   {
+     "name": "My New Flow",
+     "description": "Description of the flow",
+     "diagram": "sequenceDiagram\n    participant A\n    participant B\n    A->>B: Message"
+   }
+   ```
+
+2. Add it to `diagrams/config.json`:
+   ```json
+   {
+     "diagrams": [
+       ...existing diagrams...,
+       {
+         "id": "my-new-flow",
+         "file": "my-new-flow.json"
+       }
+     ]
+   }
+   ```
+
+3. Refresh the browser - your new diagram will appear in the dropdown
+
+---
+
 
 ## Extended Syntax Reference
 

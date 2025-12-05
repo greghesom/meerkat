@@ -1,0 +1,5 @@
+{
+  "name": "Payment Flow",
+  "description": "Payment processing with external payment gateway",
+  "diagram": "sequenceDiagram\n    participant Customer\n    participant Cart\n    participant PaymentAPI\n    participant PaymentGateway\n    participant OrderService\n\n    Customer->>Cart: Checkout\n    Cart->>PaymentAPI: Process Payment\n    PaymentAPI->>PaymentGateway: Charge Card\n    PaymentGateway-->>PaymentAPI: Payment Confirmed\n    PaymentAPI->>OrderService: Create Order\n    OrderService-->>PaymentAPI: Order Created\n    PaymentAPI-->>Cart: Success\n    Cart-->>Customer: Order Confirmation"
+}
