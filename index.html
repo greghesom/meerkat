@@ -12,26 +12,35 @@
         padding: 0;
       }
 
-      body {
+      html, body {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         background: #f5f5f5;
-        min-height: 100vh;
-        padding: 20px;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .page-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        padding: 15px;
       }
 
       h1 {
         text-align: center;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
         color: #333;
+        flex-shrink: 0;
       }
 
       .config-selector {
         max-width: 1400px;
-        margin: 0 auto 20px;
-        padding: 15px;
+        margin: 0 auto 15px;
+        padding: 12px 15px;
         background: white;
         border-radius: 8px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        flex-shrink: 0;
       }
 
       .config-selector label {
@@ -72,28 +81,53 @@
         gap: 20px;
         max-width: 1400px;
         margin: 0 auto;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
       }
 
       .editor-panel {
-        flex: 1;
+        flex: 0 0 320px;
         min-width: 300px;
+        overflow-y: auto;
+        padding-right: 10px;
       }
 
       .diagram-panel {
-        flex: 2;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
         background: white;
         border-radius: 8px;
-        padding: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+        min-width: 0;
+      }
+
+      .diagram-scroll-container {
+        flex: 1;
         overflow: auto;
+        padding: 20px;
+        min-height: 0;
+      }
+
+      #diagram-container {
+        min-height: 300px;
+        display: inline-block;
+        min-width: 100%;
+      }
+
+      #timeline-container {
+        flex-shrink: 0;
+        border-top: 1px solid #e9ecef;
       }
 
       textarea {
         width: 100%;
-        height: 400px;
-        padding: 15px;
+        height: 250px;
+        padding: 12px;
         font-family: 'Monaco', 'Menlo', monospace;
-        font-size: 13px;
+        font-size: 12px;
         border: 1px solid #ddd;
         border-radius: 8px;
         resize: vertical;
@@ -127,10 +161,6 @@
 
       button.secondary:hover {
         background: #4b5563;
-      }
-
-      #diagram-container {
-        min-height: 300px;
       }
 
       .legend {
@@ -333,6 +363,7 @@
     </style>
   </head>
   <body>
+    <div class="page-wrapper">
     <h1>Meerkat - Sequence Diagram Visualizer</h1>
 
     <div class="config-selector">
@@ -457,16 +488,25 @@
       </div>
 
       <div class="diagram-panel">
-        <div id="diagram-container"></div>
+        <div class="diagram-scroll-container">
+          <div id="diagram-container"></div>
+        </div>
+        <div id="timeline-container"></div>
       </div>
+    </div>
     </div>
 
     <script type="module">
-      import { SequenceVisualizer, Lexer, Parser } from './src/index.js';
+      import { SequenceVisualizer, Lexer, Parser, TimelineSlider } from './src/index.js';
 
       // Initialize visualizer
       const visualizer = new SequenceVisualizer('#diagram-container', {
         theme: 'light',
+      });
+
+      // Initialize timeline slider
+      const timelineSlider = new TimelineSlider('#timeline-container', {
+        onChange: (step, total) => onTimelineChange(step, total),
       });
 
       // State
@@ -475,6 +515,7 @@
       let diagramNames = new Map(); // Cache for diagram names
       let currentActiveFlow = null; // Current active flow for filtering
       let currentAST = null; // Cache the current AST for flow selector
+      let currentStep = null; // Current timeline step
 
       // Show error message in UI
       function showError(message) {
@@ -482,6 +523,18 @@
         document.getElementById('source').placeholder = message;
         document.getElementById('diagram-description').textContent = message;
         document.getElementById('diagram-info').style.display = 'block';
+      }
+
+      // Handle timeline slider changes
+      function onTimelineChange(step, total) {
+        // null means show all steps
+        currentStep = (step === total) ? null : step;
+        if (currentAST) {
+          visualizer.renderer.render(currentAST, { 
+            activeFlow: currentActiveFlow,
+            currentStep: currentStep,
+          });
+        }
       }
 
       // Load configuration
@@ -594,6 +647,19 @@
         }
       }
 
+      // Count visible messages based on active flow filter
+      function countVisibleMessages(ast, activeFlow) {
+        if (!activeFlow) {
+          return ast.messages.length;
+        }
+        // Count only messages that belong to the active flow
+        return ast.messages.filter(msg => {
+          const flowIds = msg.annotations?.flows || [];
+          // Message is visible if it has no flow assignments or belongs to the active flow
+          return flowIds.length === 0 || flowIds.includes(activeFlow);
+        }).length;
+      }
+
       // Render the current diagram
       function renderDiagram() {
         const source = document.getElementById('source').value;
@@ -602,10 +668,20 @@
         const ast = parseSourceAndUpdateFlows(source);
         if (!ast) return;
         
-        // Render with active flow filter
+        // Initialize timeline slider with the number of visible messages
+        const visibleCount = countVisibleMessages(ast, currentActiveFlow);
+        if (visibleCount > 0) {
+          timelineSlider.init(visibleCount);
+          currentStep = null; // Reset to show all steps
+        }
+        
+        // Render with active flow filter and timeline step
         visualizer.renderer.activeFlow = currentActiveFlow;
         visualizer.renderer.flows = ast.flows || [];
-        visualizer.renderer.render(ast, { activeFlow: currentActiveFlow });
+        visualizer.renderer.render(ast, { 
+          activeFlow: currentActiveFlow,
+          currentStep: currentStep,
+        });
       }
 
       // Reset to config version
@@ -613,6 +689,7 @@
         if (currentDiagramData) {
           document.getElementById('source').value = currentDiagramData.diagram;
           currentActiveFlow = null;
+          currentStep = null;
           document.getElementById('flow-select').value = '';
           renderDiagram();
         }
