@@ -127,6 +127,24 @@
         opacity: 0;
       }
 
+      .comments-panel-container {
+        flex: 0 0 350px;
+        min-width: 300px;
+        max-width: 400px;
+        overflow-y: auto;
+        transition: flex-basis 0.3s ease, min-width 0.3s ease, max-width 0.3s ease, opacity 0.3s ease;
+        background: white;
+        border-left: 1px solid #e9ecef;
+      }
+
+      .comments-panel-container.collapsed {
+        flex-basis: 0;
+        min-width: 0;
+        max-width: 0;
+        overflow: hidden;
+        opacity: 0;
+      }
+
       .diagram-scroll-container {
         flex: 1;
         overflow: auto;
@@ -593,6 +611,9 @@
         <div class="diagram-toolbar">
           <button id="toggle-editor" class="panel-toggle active" title="Toggle Editor Panel">📝</button>
           <button id="toggle-details" class="panel-toggle active" title="Toggle Details Panel">📋</button>
+          <button id="toggle-comments" class="panel-toggle" title="Toggle Comments Panel">💬</button>
+          <button id="add-step-btn" class="panel-toggle" title="Insert New Step">➕</button>
+          <button id="export-btn" class="panel-toggle" title="Export Diagram">💾</button>
           <div class="zoom-controls">
             <button id="zoom-out" title="Zoom Out">−</button>
             <span id="zoom-level" class="zoom-level">100%</span>
@@ -610,11 +631,28 @@
       <div class="step-details-panel-container">
         <div id="step-details-container"></div>
       </div>
+      
+      <div id="comments-panel-container" class="comments-panel-container" style="display: none;">
+      </div>
     </div>
     </div>
 
     <script type="module">
-      import { SequenceVisualizer, Lexer, Parser, TimelineSlider, StepDetailsPanel } from './src/index.js';
+      import { 
+        SequenceVisualizer, 
+        Lexer, 
+        Parser, 
+        TimelineSlider, 
+        StepDetailsPanel,
+        CommentPanel,
+        StepEditor,
+        StepInserter,
+        diagramStorage,
+        updateMessageInSource,
+        insertMessageInSource,
+        exportDiagramAsJson,
+        downloadFile
+      } from './src/index.js';
 
       // Initialize visualizer
       const visualizer = new SequenceVisualizer('#diagram-container', {
@@ -629,6 +667,35 @@
       // Initialize step details panel
       const stepDetailsPanel = new StepDetailsPanel('#step-details-container');
 
+      // Initialize comment panel
+      const commentPanel = new CommentPanel('#comments-panel-container', {
+        diagramId: 'default',
+        onCommentAdded: (stepIndex, comment) => {
+          // Refresh comment badges on the diagram
+          refreshCommentBadges();
+        },
+        onCommentDeleted: (stepIndex, commentId) => {
+          // Refresh comment badges on the diagram
+          refreshCommentBadges();
+        },
+      });
+
+      // Initialize step editor
+      const stepEditor = new StepEditor({
+        onSave: (stepIndex, updatedMessage) => {
+          handleStepEdit(stepIndex, updatedMessage);
+        },
+        onCancel: () => {},
+      });
+
+      // Initialize step inserter
+      const stepInserter = new StepInserter({
+        diagramContainer: document.getElementById('diagram-container'),
+        onInsert: (insertIndex, newMessage) => {
+          handleStepInsert(insertIndex, newMessage);
+        },
+      });
+
       // State
       let config = null;
       let currentDiagramData = null;
@@ -636,6 +703,8 @@
       let currentActiveFlow = null; // Current active flow for filtering
       let currentAST = null; // Cache the current AST for flow selector
       let currentStep = null; // Current timeline step
+      let currentDiagramId = null; // Current diagram ID for storage
+      let hasLocalEdits = false; // Track if local edits have been made
 
       // Show error message in UI
       function showError(message) {
@@ -643,6 +712,86 @@
         document.getElementById('source').placeholder = message;
         document.getElementById('diagram-description').textContent = message;
         document.getElementById('diagram-info').style.display = 'block';
+      }
+
+      // Refresh comment badges on the diagram
+      async function refreshCommentBadges() {
+        if (!currentDiagramId) return;
+        
+        const comments = await diagramStorage.getComments(currentDiagramId);
+        const counts = {};
+        Object.keys(comments).forEach(stepIndex => {
+          counts[parseInt(stepIndex, 10)] = comments[stepIndex]?.length || 0;
+        });
+        
+        visualizer.renderer.setCommentCounts(counts);
+        
+        // Re-render to update badges
+        if (currentAST) {
+          visualizer.renderer.render(currentAST, { 
+            activeFlow: currentActiveFlow,
+            currentStep: currentStep,
+          });
+        }
+      }
+
+      // Handle step click (show comments)
+      function handleStepClick(stepIndex, message, event) {
+        const commentsContainer = document.getElementById('comments-panel-container');
+        commentsContainer.style.display = 'flex';
+        document.getElementById('toggle-comments').classList.add('active');
+        commentPanel.show(stepIndex, message);
+      }
+
+      // Handle step double-click (edit properties)
+      function handleStepDoubleClick(stepIndex, message, event) {
+        stepEditor.show(stepIndex, message, currentAST, { x: event.clientX, y: event.clientY });
+      }
+
+      // Handle step edit save
+      function handleStepEdit(stepIndex, updatedMessage) {
+        const source = document.getElementById('source').value;
+        const newSource = updateMessageInSource(source, stepIndex, updatedMessage, currentAST);
+        
+        document.getElementById('source').value = newSource;
+        hasLocalEdits = true;
+        
+        // Save to local storage
+        diagramStorage.saveDiagramEdit(currentDiagramId, newSource);
+        
+        // Re-render the diagram
+        renderDiagram();
+      }
+
+      // Handle step insert
+      function handleStepInsert(insertIndex, newMessage) {
+        const source = document.getElementById('source').value;
+        const newSource = insertMessageInSource(source, insertIndex, newMessage, currentAST);
+        
+        document.getElementById('source').value = newSource;
+        hasLocalEdits = true;
+        
+        // Save to local storage
+        diagramStorage.saveDiagramEdit(currentDiagramId, newSource);
+        
+        // Re-render the diagram
+        renderDiagram();
+      }
+
+      // Export diagram
+      async function handleExport() {
+        if (!currentDiagramData || !currentDiagramId) {
+          alert('No diagram loaded');
+          return;
+        }
+        
+        const source = document.getElementById('source').value;
+        const comments = await diagramStorage.getComments(currentDiagramId);
+        
+        const exportData = exportDiagramAsJson(currentDiagramData, source, comments);
+        const filename = `${currentDiagramId}-${new Date().toISOString().split('T')[0]}.json`;
+        
+        downloadFile(exportData, filename);
       }
 
       // Handle timeline slider changes
@@ -725,15 +874,30 @@
           }
           currentDiagramData = await response.json();
           
+          // Set current diagram ID for storage
+          currentDiagramId = diagramId;
+          commentPanel.setDiagramId(diagramId);
+          hasLocalEdits = false;
+          
+          // Check for local edits
+          const savedEdit = await diagramStorage.getDiagramEdit(diagramId);
+          
           // Update UI
-          document.getElementById('source').value = currentDiagramData.diagram;
+          document.getElementById('source').value = savedEdit?.source || currentDiagramData.diagram;
           document.getElementById('source').placeholder = 'Enter sequence diagram...';
           document.getElementById('diagram-description').textContent = 
             currentDiagramData.description || 'No description available';
           document.getElementById('diagram-info').style.display = 'block';
           
+          if (savedEdit) {
+            hasLocalEdits = true;
+          }
+          
           // Render diagram
           renderDiagram();
+          
+          // Load comment counts for badges
+          await refreshCommentBadges();
         } catch (error) {
           console.error('Failed to load diagram:', error);
           showError(`Error: Could not load diagram "${diagramId}". Check that the file exists.`);
@@ -801,6 +965,10 @@
         // Initialize step details panel with the AST
         stepDetailsPanel.init(ast);
         
+        // Set up event handlers on the renderer
+        visualizer.renderer.setOnStepClick(handleStepClick);
+        visualizer.renderer.setOnStepDoubleClick(handleStepDoubleClick);
+        
         // Render with active flow filter and timeline step
         visualizer.renderer.activeFlow = currentActiveFlow;
         visualizer.renderer.flows = ast.flows || [];
@@ -811,12 +979,19 @@
       }
 
       // Reset to config version
-      function resetToConfig() {
+      async function resetToConfig() {
         if (currentDiagramData) {
           document.getElementById('source').value = currentDiagramData.diagram;
           currentActiveFlow = null;
           currentStep = null;
+          hasLocalEdits = false;
           document.getElementById('flow-select').value = '';
+          
+          // Clear local edits
+          if (currentDiagramId) {
+            await diagramStorage.clearDiagramEdit(currentDiagramId);
+          }
+          
           renderDiagram();
         }
       }
@@ -837,6 +1012,28 @@
 
       document.getElementById('render-btn').addEventListener('click', renderDiagram);
       document.getElementById('reset-btn').addEventListener('click', resetToConfig);
+
+      // Toggle comments panel
+      const commentsContainer = document.getElementById('comments-panel-container');
+      const toggleCommentsBtn = document.getElementById('toggle-comments');
+      toggleCommentsBtn.addEventListener('click', () => {
+        const isVisible = commentsContainer.style.display !== 'none';
+        commentsContainer.style.display = isVisible ? 'none' : 'flex';
+        toggleCommentsBtn.classList.toggle('active', !isVisible);
+        if (isVisible) {
+          commentPanel.hide();
+        }
+      });
+
+      // Add step button
+      document.getElementById('add-step-btn').addEventListener('click', () => {
+        if (currentAST) {
+          stepInserter.startInsertMode(currentAST);
+        }
+      });
+
+      // Export button
+      document.getElementById('export-btn').addEventListener('click', handleExport);
 
       document.getElementById('source').addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'Enter') {

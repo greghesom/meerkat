@@ -141,6 +141,20 @@ export { SVGRenderer, StepState } from './core/renderer/svg-renderer.js';
 export { TimelineSlider } from './core/timeline/timeline-slider.js';
 export { StepDetailsPanel } from './core/timeline/step-details-panel.js';
 
+// Export collaboration features
+export { DiagramStorage, diagramStorage } from './core/storage/diagram-storage.js';
+export { CommentPanel } from './core/collaboration/comment-panel.js';
+export { StepEditor } from './core/collaboration/step-editor.js';
+export { StepInserter } from './core/collaboration/step-inserter.js';
+export { 
+  generateMessageLine, 
+  updateMessageInSource, 
+  insertMessageInSource,
+  deleteMessageFromSource,
+  exportDiagramAsJson,
+  downloadFile 
+} from './core/collaboration/diagram-generator.js';
+
 // Expose globally for script tag usage
 if (typeof window !== 'undefined') {
   window.SequenceVisualizer = SequenceVisualizer;
