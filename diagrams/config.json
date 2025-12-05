@@ -24,6 +24,10 @@
     {
       "id": "payment-flow",
       "file": "payment-flow.json"
+    },
+    {
+      "id": "flow-colors",
+      "file": "flow-colors.json"
     }
   ]
 }

@@ -352,6 +352,7 @@ sequenceDiagram
       expect(ast.flows).toHaveLength(1);
       expect(ast.flows[0].id).toBe('happy_path');
       expect(ast.flows[0].displayName).toBe('Happy Path - Successful Order');
+      expect(ast.flows[0].color).toBe('#22C55E'); // First default color
     });
 
     test('should parse multiple flow directives', () => {
@@ -364,9 +365,15 @@ sequenceDiagram
     participant API`);
       
       expect(ast.flows).toHaveLength(3);
-      expect(ast.flows[0]).toEqual({ id: 'happy_path', displayName: 'Happy Path - Successful Order' });
-      expect(ast.flows[1]).toEqual({ id: 'error_flow', displayName: 'Error Flow - Payment Failed' });
-      expect(ast.flows[2]).toEqual({ id: 'retry_flow', displayName: 'Retry Flow - With Fallback' });
+      expect(ast.flows[0].id).toBe('happy_path');
+      expect(ast.flows[0].displayName).toBe('Happy Path - Successful Order');
+      expect(ast.flows[0].color).toBe('#22C55E'); // First default color
+      expect(ast.flows[1].id).toBe('error_flow');
+      expect(ast.flows[1].displayName).toBe('Error Flow - Payment Failed');
+      expect(ast.flows[1].color).toBe('#EF4444'); // Second default color
+      expect(ast.flows[2].id).toBe('retry_flow');
+      expect(ast.flows[2].displayName).toBe('Retry Flow - With Fallback');
+      expect(ast.flows[2].color).toBe('#F59E0B'); // Third default color
     });
 
     test('should parse flow directive without display name', () => {
@@ -377,6 +384,7 @@ sequenceDiagram
       expect(ast.flows).toHaveLength(1);
       expect(ast.flows[0].id).toBe('simple_flow');
       expect(ast.flows[0].displayName).toBe('simple_flow');
+      expect(ast.flows[0].color).toBe('#22C55E'); // First default color
     });
 
     test('should support at least 8 distinct flows', () => {
@@ -451,6 +459,61 @@ sequenceDiagram
       expect(ast.flows).toHaveLength(2);
       expect(ast.participants).toHaveLength(3);
       expect(ast.messages).toHaveLength(1);
+    });
+
+    test('should parse flow with explicit hex color', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow happy_path "Happy Path" #22C55E
+    Client->>API: Request`);
+      
+      expect(ast.flows).toHaveLength(1);
+      expect(ast.flows[0].id).toBe('happy_path');
+      expect(ast.flows[0].color).toBe('#22C55E');
+    });
+
+    test('should parse flow with rgb color', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow error_flow "Error Flow" rgb(255, 0, 0)
+    Client->>API: Request`);
+      
+      expect(ast.flows).toHaveLength(1);
+      expect(ast.flows[0].color).toBe('rgb(255, 0, 0)');
+    });
+
+    test('should parse flow with named color', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow warning_flow "Warning Flow" orange
+    Client->>API: Request`);
+      
+      expect(ast.flows).toHaveLength(1);
+      expect(ast.flows[0].color).toBe('orange');
+    });
+
+    test('should parse multiple flows with mixed color formats', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow happy_path "Happy Path" #22C55E
+    %%flow error_flow "Error Flow" rgb(239, 68, 68)
+    %%flow retry_flow "Retry Flow" orange
+    Client->>API: Request`);
+      
+      expect(ast.flows).toHaveLength(3);
+      expect(ast.flows[0].color).toBe('#22C55E');
+      expect(ast.flows[1].color).toBe('rgb(239, 68, 68)');
+      expect(ast.flows[2].color).toBe('orange');
+    });
+
+    test('should use default colors when no color specified', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow flow1 "Flow 1"
+    %%flow flow2 "Flow 2"
+    %%flow flow3 "Flow 3"
+    Client->>API: Request`);
+      
+      expect(ast.flows).toHaveLength(3);
+      // Default colors from DEFAULT_FLOW_COLORS
+      expect(ast.flows[0].color).toBe('#22C55E');
+      expect(ast.flows[1].color).toBe('#EF4444');
+      expect(ast.flows[2].color).toBe('#F59E0B');
     });
   });
 });

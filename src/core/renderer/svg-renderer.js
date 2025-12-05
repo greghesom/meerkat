@@ -62,6 +62,20 @@ const BADGE_CONFIG = {
 };
 
 /**
+ * Flow legend styling constants
+ */
+const FLOW_LEGEND_CONFIG = {
+  titleWidth: 50,
+  colorBoxSize: 12,
+  colorBoxRadius: 2,
+  colorBoxToTextGap: 4,
+  itemGap: 20,
+  charWidth: 6,
+  fontSize: 10,
+  bottomOffset: 20,
+};
+
+/**
  * SVG Renderer for sequence diagrams
  */
 export class SVGRenderer {
@@ -93,6 +107,9 @@ export class SVGRenderer {
    * Render the complete diagram
    */
   render(ast, state = {}) {
+    // Store flows for color lookup
+    this.flows = ast.flows || [];
+
     // Calculate dimensions
     const dimensions = this.calculateDimensions(ast);
 
@@ -111,10 +128,15 @@ export class SVGRenderer {
     const participantPositions = this.renderParticipants(ast.participants, ast.title);
 
     // Render lifelines
-    this.renderLifelines(participantPositions, dimensions.height - dimensions.legendHeight, ast.title);
+    this.renderLifelines(participantPositions, dimensions.height - dimensions.legendHeight - dimensions.flowLegendHeight, ast.title);
 
     // Render messages with arrows
     this.renderMessages(ast.messages, participantPositions, state, ast.title, dimensions);
+
+    // Render flow color legend if there are flows defined
+    if (this.flows.length > 0) {
+      this.renderFlowLegend(dimensions);
+    }
 
     // Render protocol legend if there are request types used
     if (dimensions.usedRequestTypes && dimensions.usedRequestTypes.length > 0) {
@@ -159,6 +181,9 @@ export class SVGRenderer {
     
     // Calculate legend height if there are request types used
     const legendHeight = usedRequestTypes.length > 0 ? 50 : 0;
+
+    // Calculate flow legend height if there are flows defined
+    const flowLegendHeight = (ast.flows && ast.flows.length > 0) ? 40 : 0;
     
     // Calculate extra height needed for annotations
     let annotationExtraHeight = 0;
@@ -174,9 +199,9 @@ export class SVGRenderer {
       ? padding * 2 + (numParticipants - 1) * participantGap + this.options.participantWidth
       : 400;
 
-    const height = padding * 2 + titleHeight + participantHeight + 30 + numMessages * effectiveMessageGap + 50 + legendHeight;
+    const height = padding * 2 + titleHeight + participantHeight + 30 + numMessages * effectiveMessageGap + 50 + legendHeight + flowLegendHeight;
 
-    return { width, height, titleHeight, effectiveMessageGap, usedRequestTypes, legendHeight };
+    return { width, height, titleHeight, effectiveMessageGap, usedRequestTypes, legendHeight, flowLegendHeight };
   }
 
   /**
@@ -197,12 +222,38 @@ export class SVGRenderer {
   createDefs() {
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
 
-    // Create arrow markers for solid and dashed lines
+    // Create default arrow markers for solid and dashed lines
     defs.appendChild(this.createArrowMarker('arrow-filled', '#333333', false));
     defs.appendChild(this.createArrowMarker('arrow-open', '#333333', true));
 
+    // Create colored arrow markers for each flow
+    if (this.flows) {
+      this.flows.forEach(flow => {
+        const color = flow.color || '#333333';
+        const safeId = this.sanitizeFlowId(flow.id);
+        defs.appendChild(this.createArrowMarker(`arrow-filled-${safeId}`, color, false));
+        defs.appendChild(this.createArrowMarker(`arrow-open-${safeId}`, color, true));
+      });
+    }
+
     this.svg.appendChild(defs);
     return defs;
+  }
+
+  /**
+   * Sanitize flow ID for use in marker IDs (remove special characters)
+   */
+  sanitizeFlowId(id) {
+    return id.replace(/[^a-zA-Z0-9_-]/g, '_');
+  }
+
+  /**
+   * Get the color for a flow by ID
+   */
+  getFlowColor(flowId) {
+    if (!flowId || !this.flows) return null;
+    const flow = this.flows.find(f => f.id === flowId);
+    return flow ? flow.color : null;
   }
 
   /**
@@ -394,6 +445,12 @@ export class SVGRenderer {
     const loopWidth = 40;
     const loopHeight = 20;
 
+    // Get flow color
+    const flowIds = message.annotations?.flows || [];
+    const primaryFlowId = flowIds[0];
+    const flowColor = this.getFlowColor(primaryFlowId);
+    const strokeColor = flowColor || '#333333';
+
     // Create path for loop
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     const d = `M ${pos.x} ${y} 
@@ -402,14 +459,21 @@ export class SVGRenderer {
                L ${pos.x} ${y + loopHeight}`;
     path.setAttribute('d', d);
     path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', '#333333');
+    path.setAttribute('stroke', strokeColor);
     path.setAttribute('stroke-width', '2');
 
     if (message.arrow.line === 'dashed' || message.annotations.isAsync) {
       path.setAttribute('stroke-dasharray', this.options.dashPattern);
     }
 
-    const markerId = message.arrow.head === 'open' ? 'arrow-open' : 'arrow-filled';
+    // Arrow marker (use flow-specific marker if available)
+    let markerId;
+    if (primaryFlowId && flowColor) {
+      const safeId = this.sanitizeFlowId(primaryFlowId);
+      markerId = message.arrow.head === 'open' ? `arrow-open-${safeId}` : `arrow-filled-${safeId}`;
+    } else {
+      markerId = message.arrow.head === 'open' ? 'arrow-open' : 'arrow-filled';
+    }
     path.setAttribute('marker-end', `url(#${markerId})`);
 
     group.appendChild(path);
@@ -423,7 +487,7 @@ export class SVGRenderer {
     text.setAttribute('class', 'message-label');
     text.setAttribute('font-family', 'sans-serif');
     text.setAttribute('font-size', '12');
-    text.setAttribute('fill', '#333333');
+    text.setAttribute('fill', strokeColor);
     text.textContent = message.text;
 
     group.appendChild(text);
@@ -461,7 +525,14 @@ export class SVGRenderer {
     line.setAttribute('y1', y);
     line.setAttribute('x2', targetPos.x);
     line.setAttribute('y2', y);
-    line.setAttribute('stroke', '#333333');
+
+    // Get flow color if message is assigned to a flow
+    const flowIds = message.annotations?.flows || [];
+    const primaryFlowId = flowIds[0]; // Use first flow for color
+    const flowColor = this.getFlowColor(primaryFlowId);
+    const strokeColor = flowColor || '#333333';
+
+    line.setAttribute('stroke', strokeColor);
     line.setAttribute('stroke-width', '2');
 
     // Dashed line for async
@@ -469,8 +540,14 @@ export class SVGRenderer {
       line.setAttribute('stroke-dasharray', this.options.dashPattern);
     }
 
-    // Arrow marker
-    const markerId = message.arrow.head === 'open' ? 'arrow-open' : 'arrow-filled';
+    // Arrow marker (use flow-specific marker if available)
+    let markerId;
+    if (primaryFlowId && flowColor) {
+      const safeId = this.sanitizeFlowId(primaryFlowId);
+      markerId = message.arrow.head === 'open' ? `arrow-open-${safeId}` : `arrow-filled-${safeId}`;
+    } else {
+      markerId = message.arrow.head === 'open' ? 'arrow-open' : 'arrow-filled';
+    }
     line.setAttribute('marker-end', `url(#${markerId})`);
 
     return line;
@@ -489,6 +566,12 @@ export class SVGRenderer {
     const hasRequest = message.annotations?.request;
     const hasResponse = message.annotations?.response;
 
+    // Get flow color for text
+    const flowIds = message.annotations?.flows || [];
+    const primaryFlowId = flowIds[0];
+    const flowColor = this.getFlowColor(primaryFlowId);
+    const textColor = flowColor || '#333333';
+
     // If there are any annotations, create a group containing label and badges
     if (hasPath || hasRequestType || hasTimeout || hasQueue || isAsync || hasRequest || hasResponse) {
       const group = this.createGroup('message-label-group');
@@ -501,7 +584,7 @@ export class SVGRenderer {
       text.setAttribute('class', 'message-label');
       text.setAttribute('font-family', 'sans-serif');
       text.setAttribute('font-size', '12');
-      text.setAttribute('fill', '#333333');
+      text.setAttribute('fill', textColor);
       text.textContent = message.text;
       group.appendChild(text);
 
@@ -562,7 +645,7 @@ export class SVGRenderer {
     text.setAttribute('class', 'message-label');
     text.setAttribute('font-family', 'sans-serif');
     text.setAttribute('font-size', '12');
-    text.setAttribute('fill', '#333333');
+    text.setAttribute('fill', textColor);
     text.textContent = message.text;
 
     return text;
@@ -878,6 +961,68 @@ export class SVGRenderer {
     group.appendChild(title);
 
     return group;
+  }
+
+  /**
+   * Render flow color legend at the bottom of the diagram
+   */
+  renderFlowLegend(dimensions) {
+    const { padding } = this.options;
+    const group = this.createGroup('flow-legend');
+    
+    // Position flow legend above the protocol legend
+    const legendY = dimensions.height - dimensions.legendHeight - FLOW_LEGEND_CONFIG.bottomOffset;
+    const legendStartX = padding;
+    
+    // Legend title
+    const legendTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    legendTitle.setAttribute('x', legendStartX);
+    legendTitle.setAttribute('y', legendY);
+    legendTitle.setAttribute('text-anchor', 'start');
+    legendTitle.setAttribute('dominant-baseline', 'middle');
+    legendTitle.setAttribute('font-family', 'sans-serif');
+    legendTitle.setAttribute('font-size', '11');
+    legendTitle.setAttribute('font-weight', '600');
+    legendTitle.setAttribute('fill', '#666666');
+    legendTitle.textContent = 'Flows:';
+    group.appendChild(legendTitle);
+    
+    // Render each flow as a legend item
+    let currentX = legendStartX + FLOW_LEGEND_CONFIG.titleWidth;
+    const { colorBoxSize, colorBoxRadius, colorBoxToTextGap, itemGap, charWidth, fontSize } = FLOW_LEGEND_CONFIG;
+    
+    this.flows.forEach(flow => {
+      const color = flow.color || '#333333';
+      const displayName = flow.displayName || flow.id;
+      const textWidth = displayName.length * charWidth;
+      
+      // Color indicator (small square)
+      const colorBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      colorBox.setAttribute('x', currentX);
+      colorBox.setAttribute('y', legendY - colorBoxSize / 2);
+      colorBox.setAttribute('width', colorBoxSize);
+      colorBox.setAttribute('height', colorBoxSize);
+      colorBox.setAttribute('rx', colorBoxRadius);
+      colorBox.setAttribute('fill', color);
+      colorBox.setAttribute('class', 'flow-color-indicator');
+      group.appendChild(colorBox);
+      
+      // Flow name text
+      const flowLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      flowLabel.setAttribute('x', currentX + colorBoxSize + colorBoxToTextGap);
+      flowLabel.setAttribute('y', legendY);
+      flowLabel.setAttribute('text-anchor', 'start');
+      flowLabel.setAttribute('dominant-baseline', 'middle');
+      flowLabel.setAttribute('font-family', 'sans-serif');
+      flowLabel.setAttribute('font-size', fontSize);
+      flowLabel.setAttribute('fill', '#333333');
+      flowLabel.textContent = displayName;
+      group.appendChild(flowLabel);
+      
+      currentX += colorBoxSize + colorBoxToTextGap + textWidth + itemGap;
+    });
+    
+    this.svg.appendChild(group);
   }
 
   /**

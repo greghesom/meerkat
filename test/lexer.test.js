@@ -381,5 +381,81 @@ describe('Lexer', () => {
       expect(tokens).toHaveLength(1);
       expect(tokens[0].type).toBe(TokenType.COMMENT);
     });
+
+    test('should tokenize flow directive with hex color', () => {
+      const source = '%%flow happy_path "Happy Path" #22C55E';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].id).toBe('happy_path');
+      expect(tokens[0].displayName).toBe('Happy Path');
+      expect(tokens[0].color).toBe('#22C55E');
+    });
+
+    test('should tokenize flow directive with 3-digit hex color', () => {
+      const source = '%%flow error_flow "Error Flow" #F00';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].color).toBe('#F00');
+    });
+
+    test('should tokenize flow directive with rgb color', () => {
+      const source = '%%flow retry_flow "Retry Flow" rgb(245, 158, 11)';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].color).toBe('rgb(245, 158, 11)');
+    });
+
+    test('should tokenize flow directive with rgba color', () => {
+      const source = '%%flow alpha_flow "Alpha Flow" rgba(59, 130, 246, 0.8)';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].color).toBe('rgba(59, 130, 246, 0.8)');
+    });
+
+    test('should tokenize flow directive with named color', () => {
+      const source = '%%flow warning_flow "Warning Flow" orange';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].color).toBe('orange');
+    });
+
+    test('should tokenize flow directive without color', () => {
+      const source = '%%flow no_color_flow "No Color Flow"';
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0].type).toBe(TokenType.FLOW_DIRECTIVE);
+      expect(tokens[0].color).toBe(null);
+    });
+
+    test('should tokenize multiple flows with different color formats', () => {
+      const source = `%%flow flow1 "Flow 1" #22C55E
+%%flow flow2 "Flow 2" rgb(255, 0, 0)
+%%flow flow3 "Flow 3" blue`;
+      const lexer = new Lexer(source);
+      const tokens = lexer.tokenize();
+      
+      const flowTokens = tokens.filter(t => t.type === TokenType.FLOW_DIRECTIVE);
+      expect(flowTokens).toHaveLength(3);
+      expect(flowTokens[0].color).toBe('#22C55E');
+      expect(flowTokens[1].color).toBe('rgb(255, 0, 0)');
+      expect(flowTokens[2].color).toBe('blue');
+    });
   });
 });

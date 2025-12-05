@@ -16,6 +16,21 @@ export const NodeType = {
 const HTTP_METHOD_PATTERN = /^(GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)?\s*(.+)$/i;
 
 /**
+ * Default color palette for flows without explicit colors.
+ * Colors are chosen to provide sufficient visual contrast.
+ */
+export const DEFAULT_FLOW_COLORS = [
+  '#22C55E', // Green
+  '#EF4444', // Red
+  '#F59E0B', // Amber
+  '#3B82F6', // Blue
+  '#8B5CF6', // Violet
+  '#EC4899', // Pink
+  '#14B8A6', // Teal
+  '#F97316', // Orange
+];
+
+/**
  * Parser class - builds AST from tokens
  */
 export class Parser {
@@ -218,20 +233,29 @@ export class Parser {
   /**
    * Parse flow directive and add to diagram flows array
    * @param {object} diagram - The diagram AST node
-   * @param {object} token - The FLOW_DIRECTIVE token with id and displayName
+   * @param {object} token - The FLOW_DIRECTIVE token with id, displayName, and optional color
    */
   parseFlowDirective(diagram, token) {
     // Check for duplicate flow ids
     const existingFlow = diagram.flows.find(f => f.id === token.id);
     if (existingFlow) {
-      // Update display name if flow already exists
+      // Update display name; only update color if a new one is explicitly specified
+      // This allows re-declaring a flow to update the name while preserving the color
       existingFlow.displayName = token.displayName;
+      if (token.color) {
+        existingFlow.color = token.color;
+      }
       return;
     }
+
+    // Assign default color if not specified
+    const flowIndex = diagram.flows.length;
+    const defaultColor = DEFAULT_FLOW_COLORS[flowIndex % DEFAULT_FLOW_COLORS.length];
 
     diagram.flows.push({
       id: token.id,
       displayName: token.displayName,
+      color: token.color || defaultColor,
     });
   }
 
