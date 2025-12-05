@@ -79,7 +79,7 @@
       .container {
         display: flex;
         gap: 20px;
-        max-width: 1400px;
+        max-width: 1600px;
         margin: 0 auto;
         flex: 1;
         min-height: 0;
@@ -102,6 +102,13 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         overflow: hidden;
         min-width: 0;
+      }
+
+      .step-details-panel-container {
+        flex: 0 0 320px;
+        min-width: 280px;
+        max-width: 380px;
+        overflow-y: auto;
       }
 
       .diagram-scroll-container {
@@ -493,11 +500,15 @@
         </div>
         <div id="timeline-container"></div>
       </div>
+
+      <div class="step-details-panel-container">
+        <div id="step-details-container"></div>
+      </div>
     </div>
     </div>
 
     <script type="module">
-      import { SequenceVisualizer, Lexer, Parser, TimelineSlider } from './src/index.js';
+      import { SequenceVisualizer, Lexer, Parser, TimelineSlider, StepDetailsPanel } from './src/index.js';
 
       // Initialize visualizer
       const visualizer = new SequenceVisualizer('#diagram-container', {
@@ -508,6 +519,9 @@
       const timelineSlider = new TimelineSlider('#timeline-container', {
         onChange: (step, total) => onTimelineChange(step, total),
       });
+
+      // Initialize step details panel
+      const stepDetailsPanel = new StepDetailsPanel('#step-details-container');
 
       // State
       let config = null;
@@ -534,6 +548,9 @@
             activeFlow: currentActiveFlow,
             currentStep: currentStep,
           });
+          
+          // Update step details panel
+          stepDetailsPanel.updateStep(currentStep);
         }
       }
 
@@ -674,6 +691,9 @@
           timelineSlider.init(visibleCount);
           currentStep = null; // Reset to show all steps
         }
+        
+        // Initialize step details panel with the AST
+        stepDetailsPanel.init(ast);
         
         // Render with active flow filter and timeline step
         visualizer.renderer.activeFlow = currentActiveFlow;
