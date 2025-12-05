@@ -31,6 +31,9 @@ export class Parser {
     const diagram = {
       type: NodeType.DIAGRAM,
       title: '',
+      description: '',
+      system: '',
+      version: '',
       participants: [],
       messages: [],
     };
@@ -48,9 +51,16 @@ export class Parser {
             this.position++;
           } else if (token.value === 'title') {
             diagram.title = this.parseTitle();
+          } else if (token.value === 'description') {
+            diagram.description = this.parseDescription();
           } else {
             this.position++;
           }
+          break;
+
+        case TokenType.INIT_DIRECTIVE:
+          this.parseInitConfig(diagram, token.value);
+          this.position++;
           break;
 
         case TokenType.IDENTIFIER:
@@ -144,16 +154,59 @@ export class Parser {
       this.position++;
     }
 
-    let title = '';
-    if (this.current()?.type === TokenType.IDENTIFIER) {
-      title = this.current().value;
-      this.position++;
-    } else if (this.current()?.type === TokenType.STRING) {
-      title = this.current().value;
+    // Collect all tokens until end of line for title text
+    const parts = [];
+    while (
+      this.current() &&
+      this.current().type !== TokenType.NEWLINE
+    ) {
+      if (this.current().type === TokenType.IDENTIFIER ||
+          this.current().type === TokenType.STRING) {
+        parts.push(this.current().value);
+      }
       this.position++;
     }
 
-    return title;
+    return parts.join(' ');
+  }
+
+  /**
+   * Parse description
+   */
+  parseDescription() {
+    this.position++; // skip 'description'
+
+    // Skip colon if present
+    if (this.current()?.type === TokenType.COLON) {
+      this.position++;
+    }
+
+    // Collect all tokens until end of line for description text
+    const parts = [];
+    while (
+      this.current() &&
+      this.current().type !== TokenType.NEWLINE
+    ) {
+      if (this.current().type === TokenType.IDENTIFIER ||
+          this.current().type === TokenType.STRING) {
+        parts.push(this.current().value);
+      }
+      this.position++;
+    }
+
+    return parts.join(' ');
+  }
+
+  /**
+   * Parse init config from %%{init: {...}}%% directive
+   */
+  parseInitConfig(diagram, config) {
+    if (config.system) {
+      diagram.system = config.system;
+    }
+    if (config.version) {
+      diagram.version = config.version;
+    }
   }
 
   /**
