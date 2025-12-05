@@ -40,6 +40,14 @@ const REQUEST_TYPE_COLORS = {
 const DEFAULT_REQUEST_TYPE_COLOR = { bg: '#757575', text: '#ffffff', icon: '●' };
 
 /**
+ * Payload annotation colors
+ */
+const PAYLOAD_COLORS = {
+  request: { bg: '#2196f3', text: '#ffffff', icon: '→' },
+  response: { bg: '#4caf50', text: '#ffffff', icon: '←' },
+};
+
+/**
  * API path badge styling constants
  */
 const BADGE_CONFIG = {
@@ -139,6 +147,8 @@ export class SVGRenderer {
     const hasRequestTypeAnnotations = ast.messages.some(m => m.annotations?.requestType);
     const hasTimeoutAnnotations = ast.messages.some(m => m.annotations?.timeout);
     const hasQueueAnnotations = ast.messages.some(m => m.annotations?.queue);
+    const hasRequestPayloadAnnotations = ast.messages.some(m => m.annotations?.request);
+    const hasResponsePayloadAnnotations = ast.messages.some(m => m.annotations?.response);
     
     // Collect unique request types used in the diagram
     const usedRequestTypes = [...new Set(
@@ -155,6 +165,8 @@ export class SVGRenderer {
     if (hasPathAnnotations) annotationExtraHeight += 15;
     if (hasRequestTypeAnnotations) annotationExtraHeight += 15;
     if (hasTimeoutAnnotations || hasQueueAnnotations) annotationExtraHeight += 12;
+    if (hasRequestPayloadAnnotations) annotationExtraHeight += 18;
+    if (hasResponsePayloadAnnotations) annotationExtraHeight += 18;
     
     const effectiveMessageGap = messageGap + annotationExtraHeight;
 
@@ -474,9 +486,11 @@ export class SVGRenderer {
     const hasTimeout = message.annotations?.timeout;
     const hasQueue = message.annotations?.queue;
     const isAsync = message.annotations?.isAsync;
+    const hasRequest = message.annotations?.request;
+    const hasResponse = message.annotations?.response;
 
     // If there are any annotations, create a group containing label and badges
-    if (hasPath || hasRequestType || hasTimeout || hasQueue || isAsync) {
+    if (hasPath || hasRequestType || hasTimeout || hasQueue || isAsync || hasRequest || hasResponse) {
       const group = this.createGroup('message-label-group');
 
       // Create message text with optional async icon
@@ -521,6 +535,20 @@ export class SVGRenderer {
       if (hasTimeout || hasQueue) {
         const indicatorBadge = this.createSyncAsyncIndicator(midX, y + 12, message.annotations);
         group.appendChild(indicatorBadge);
+      }
+
+      // Create request/response payload badges
+      let payloadY = y + (hasTimeout || hasQueue ? 26 : 12);
+      
+      if (hasRequest) {
+        const requestBadge = this.createPayloadBadge(midX, payloadY, 'request', message.annotations.request);
+        group.appendChild(requestBadge);
+        payloadY += 18;
+      }
+      
+      if (hasResponse) {
+        const responseBadge = this.createPayloadBadge(midX, payloadY, 'response', message.annotations.response);
+        group.appendChild(responseBadge);
       }
 
       return group;
@@ -633,6 +661,92 @@ export class SVGRenderer {
     group.appendChild(title);
     
     return group;
+  }
+
+  /**
+   * Create payload badge for request/response schema hints
+   */
+  createPayloadBadge(x, y, type, payload) {
+    const group = this.createGroup(`payload-badge payload-${type}`);
+    
+    if (!payload) return group;
+    
+    const colors = PAYLOAD_COLORS[type] || PAYLOAD_COLORS.request;
+    const icon = type === 'request' ? '→' : '←';
+    const label = type === 'request' ? 'REQ' : 'RES';
+    
+    // Determine display text and tooltip
+    let displayText = label;
+    let tooltipText = '';
+    
+    if (payload.type === 'reference') {
+      displayText = `${label} 🔗`;
+      tooltipText = `${type === 'request' ? 'Request' : 'Response'} Schema: ${payload.url}`;
+    } else if (payload.type === 'inline') {
+      displayText = `${label}: ${this.truncateSchema(payload.schema)}`;
+      tooltipText = `${type === 'request' ? 'Request' : 'Response'} Schema:\n${payload.schema}`;
+    }
+    
+    // Calculate badge dimensions
+    const charWidth = 6;
+    const padding = 12;
+    const height = 16;
+    const badgeWidth = Math.min(displayText.length * charWidth + padding, 200);
+    const startX = x - badgeWidth / 2;
+    
+    // Badge background
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', startX);
+    rect.setAttribute('y', y - height / 2);
+    rect.setAttribute('width', badgeWidth);
+    rect.setAttribute('height', height);
+    rect.setAttribute('rx', '3');
+    rect.setAttribute('fill', colors.bg);
+    rect.setAttribute('stroke', colors.bg);
+    rect.setAttribute('stroke-width', '1');
+    rect.setAttribute('class', `payload-badge-bg payload-${type}-bg`);
+    rect.setAttribute('style', 'cursor: pointer;');
+    group.appendChild(rect);
+    
+    // Badge text
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', x);
+    text.setAttribute('y', y);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'middle');
+    text.setAttribute('font-family', 'monospace');
+    text.setAttribute('font-size', '9');
+    text.setAttribute('font-weight', '500');
+    text.setAttribute('fill', colors.text);
+    text.setAttribute('style', 'cursor: pointer;');
+    text.textContent = this.truncateText(displayText, 30);
+    group.appendChild(text);
+    
+    // Tooltip with full schema info
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = tooltipText;
+    group.appendChild(title);
+    
+    return group;
+  }
+
+  /**
+   * Truncate schema text for display in badge
+   */
+  truncateSchema(schema) {
+    if (!schema) return '';
+    const maxLength = 25;
+    if (schema.length <= maxLength) return schema;
+    return schema.substring(0, maxLength) + '…';
+  }
+
+  /**
+   * Truncate text to specified length
+   */
+  truncateText(text, maxLength) {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '…';
   }
 
   /**

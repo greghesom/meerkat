@@ -899,4 +899,234 @@ describe('SVGRenderer', () => {
       expect(heightWith).toBeGreaterThan(heightWithout);
     });
   });
+
+  describe('Request/Response Payload Annotations', () => {
+    test('should render request payload badge with inline schema', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Create User @request{name: string, email: string}');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      expect(labelGroup).toBeDefined();
+      
+      // Should have payload badge
+      const payloadBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class')?.includes('payload-request')
+      );
+      expect(payloadBadge).toBeDefined();
+    });
+
+    test('should render response payload badge with inline schema', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('API-->>Client: User Created @response{id: uuid, created_at: timestamp}');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      expect(labelGroup).toBeDefined();
+      
+      // Should have payload badge
+      const payloadBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class')?.includes('payload-response')
+      );
+      expect(payloadBadge).toBeDefined();
+    });
+
+    test('should render both request and response payload badges', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Create User @request{name: string} @response{id: uuid}');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      // Should have both badges
+      const requestBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class')?.includes('payload-request')
+      );
+      const responseBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class')?.includes('payload-response')
+      );
+      
+      expect(requestBadge).toBeDefined();
+      expect(responseBadge).toBeDefined();
+    });
+
+    test('should render payload badge with link icon for URL reference', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Request @request{https://api.example.com/schemas/user}');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      const payloadBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class')?.includes('payload-request')
+      );
+      expect(payloadBadge).toBeDefined();
+      
+      // Badge text should include link icon
+      const badgeText = payloadBadge.children.find((c) => c.tagName === 'text');
+      expect(badgeText).toBeDefined();
+      expect(badgeText.textContent).toContain('🔗');
+    });
+
+    test('should include tooltip with full schema info', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Request @request{name: string, email: string}');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      const payloadBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class')?.includes('payload-request')
+      );
+      
+      // Find the title element (tooltip)
+      const tooltip = payloadBadge.children.find((c) => c.tagName === 'title');
+      expect(tooltip).toBeDefined();
+      expect(tooltip.textContent).toContain('Request Schema');
+      expect(tooltip.textContent).toContain('name: string, email: string');
+    });
+
+    test('should render payload with path and type annotations together', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Create User @path(POST /users) @type(JSON) @request{name: string}');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      // Should have all badges
+      const pathBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'api-path-badge'
+      );
+      const typeBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class') === 'request-type-badge'
+      );
+      const payloadBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class')?.includes('payload-request')
+      );
+      
+      expect(pathBadge).toBeDefined();
+      expect(typeBadge).toBeDefined();
+      expect(payloadBadge).toBeDefined();
+    });
+
+    test('should increase diagram height when payload annotations are present', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const astWithPayload = parseSource(`sequenceDiagram
+      Client->>API: Request @request{name: string}`);
+      
+      const astWithoutPayload = parseSource(`sequenceDiagram
+      Client->>API: Request`);
+      
+      const svgWithPayload = renderer.render(astWithPayload);
+      const svgWithoutPayload = renderer.render(astWithoutPayload);
+      
+      const heightWithPayload = parseInt(svgWithPayload.getAttribute('height'));
+      const heightWithoutPayload = parseInt(svgWithoutPayload.getAttribute('height'));
+      
+      // Diagram with payload annotations should be taller
+      expect(heightWithPayload).toBeGreaterThan(heightWithoutPayload);
+    });
+
+    test('should render request badge with correct color (blue)', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('Client->>API: Request @request{name: string}');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      const payloadBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class')?.includes('payload-request')
+      );
+      
+      // Find the rect element (background)
+      const rect = payloadBadge.children.find((c) => c.tagName === 'rect');
+      expect(rect).toBeDefined();
+      expect(rect.getAttribute('fill')).toBe('#2196f3');
+    });
+
+    test('should render response badge with correct color (green)', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource('API-->>Client: Response @response{id: uuid}');
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const labelGroup = messageGroup.children.find(
+        (c) => c.getAttribute('class') === 'message-label-group'
+      );
+      
+      const payloadBadge = labelGroup.children.find(
+        (c) => c.getAttribute('class')?.includes('payload-response')
+      );
+      
+      // Find the rect element (background)
+      const rect = payloadBadge.children.find((c) => c.tagName === 'rect');
+      expect(rect).toBeDefined();
+      expect(rect.getAttribute('fill')).toBe('#4caf50');
+    });
+  });
 });

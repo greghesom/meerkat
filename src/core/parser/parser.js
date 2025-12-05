@@ -284,6 +284,8 @@ export class Parser {
       timeout: null,
       queue: null,
       flows: [],
+      request: null,
+      response: null,
     };
 
     while (this.current()?.type === TokenType.ANNOTATION) {
@@ -323,12 +325,43 @@ export class Parser {
         case 'flow':
           annotations.flows = annotation.value?.split(',').map((f) => f.trim()) || [];
           break;
+
+        case 'request':
+          annotations.request = this.parsePayloadAnnotation(annotation.value);
+          break;
+
+        case 'response':
+          annotations.response = this.parsePayloadAnnotation(annotation.value);
+          break;
       }
 
       this.position++;
     }
 
     return annotations;
+  }
+
+  /**
+   * Parse payload annotation value (e.g., "name: string, email: string" or a schema URL)
+   */
+  parsePayloadAnnotation(value) {
+    if (!value) return null;
+
+    const trimmed = value.trim();
+
+    // Check if it's a URL reference (external schema)
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('#')) {
+      return {
+        type: 'reference',
+        url: trimmed,
+      };
+    }
+
+    // Parse as inline schema definition
+    return {
+      type: 'inline',
+      schema: trimmed,
+    };
   }
 
   /**

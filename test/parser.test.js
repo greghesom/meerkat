@@ -165,6 +165,74 @@ describe('Parser', () => {
       expect(ast.messages[0].annotations.timeout).toBe('100ms');
     });
 
+    test('should parse @request annotation with inline schema', () => {
+      const ast = parse('Client->>API: Create User @request{name: string, email: string}');
+      
+      expect(ast.messages[0].annotations.request).toEqual({
+        type: 'inline',
+        schema: 'name: string, email: string',
+      });
+    });
+
+    test('should parse @response annotation with inline schema', () => {
+      const ast = parse('API-->>Client: User Created @response{id: uuid, created_at: timestamp}');
+      
+      expect(ast.messages[0].annotations.response).toEqual({
+        type: 'inline',
+        schema: 'id: uuid, created_at: timestamp',
+      });
+    });
+
+    test('should parse @request with URL reference', () => {
+      const ast = parse('Client->>API: Request @request{https://api.example.com/schemas/user}');
+      
+      expect(ast.messages[0].annotations.request).toEqual({
+        type: 'reference',
+        url: 'https://api.example.com/schemas/user',
+      });
+    });
+
+    test('should parse @response with anchor reference', () => {
+      const ast = parse('API-->>Client: Response @response{#UserResponse}');
+      
+      expect(ast.messages[0].annotations.response).toEqual({
+        type: 'reference',
+        url: '#UserResponse',
+      });
+    });
+
+    test('should parse both @request and @response annotations', () => {
+      const ast = parse('Client->>API: Create User @request{name: string} @response{id: uuid}');
+      
+      expect(ast.messages[0].annotations.request).toEqual({
+        type: 'inline',
+        schema: 'name: string',
+      });
+      expect(ast.messages[0].annotations.response).toEqual({
+        type: 'inline',
+        schema: 'id: uuid',
+      });
+    });
+
+    test('should parse @request with other annotations', () => {
+      const ast = parse('Client->>API: Create User @path(POST /users) @type(JSON) @request{name: string}');
+      
+      expect(ast.messages[0].annotations.method).toBe('POST');
+      expect(ast.messages[0].annotations.path).toBe('/users');
+      expect(ast.messages[0].annotations.requestType).toBe('JSON');
+      expect(ast.messages[0].annotations.request).toEqual({
+        type: 'inline',
+        schema: 'name: string',
+      });
+    });
+
+    test('should have null request and response by default', () => {
+      const ast = parse('Client->>API: Request');
+      
+      expect(ast.messages[0].annotations.request).toBe(null);
+      expect(ast.messages[0].annotations.response).toBe(null);
+    });
+
     test('should parse multiple annotations', () => {
       const ast = parse('Client->>API: Request @path(GET /api/users) @type(JSON) @sync');
       

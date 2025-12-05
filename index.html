@@ -282,6 +282,19 @@
         fill: #e3f2fd;
         stroke: #90caf9;
       }
+
+      /* Payload badge styles */
+      .sequence-diagram .payload-badge {
+        cursor: pointer;
+      }
+
+      .sequence-diagram .payload-request-bg {
+        fill: #2196f3;
+      }
+
+      .sequence-diagram .payload-response-bg {
+        fill: #4caf50;
+      }
     </style>
   </head>
   <body>
@@ -359,6 +372,21 @@
           <div class="legend-item">
             <code>@queue(user-events)</code>
             <span>- Message queue name</span>
+          </div>
+        </div>
+
+        <div class="legend" style="margin-top: 10px;">
+          <h3>Payload Annotations</h3>
+          <div class="legend-item">
+            <code>@request{name: string, email: string}</code>
+            <span>- Request body schema hint</span>
+          </div>
+          <div class="legend-item">
+            <code>@response{id: uuid, created_at: timestamp}</code>
+            <span>- Response body schema hint</span>
+          </div>
+          <div class="legend-item" style="font-size: 12px; color: #666;">
+            Supports inline schemas and external references (URLs or anchors)
           </div>
         </div>
 

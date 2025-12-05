@@ -127,6 +127,66 @@ describe('Lexer', () => {
       });
     });
 
+    test('should tokenize @request annotation with curly braces', () => {
+      const lexer = new Lexer('@request{name: string, email: string}');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toEqual({
+        type: TokenType.ANNOTATION,
+        name: 'request',
+        value: 'name: string, email: string',
+      });
+    });
+
+    test('should tokenize @response annotation with curly braces', () => {
+      const lexer = new Lexer('@response{id: uuid, created_at: timestamp}');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toEqual({
+        type: TokenType.ANNOTATION,
+        name: 'response',
+        value: 'id: uuid, created_at: timestamp',
+      });
+    });
+
+    test('should tokenize @request with URL reference', () => {
+      const lexer = new Lexer('@request{https://api.example.com/schemas/user}');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toEqual({
+        type: TokenType.ANNOTATION,
+        name: 'request',
+        value: 'https://api.example.com/schemas/user',
+      });
+    });
+
+    test('should tokenize @response with anchor reference', () => {
+      const lexer = new Lexer('@response{#UserResponse}');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toEqual({
+        type: TokenType.ANNOTATION,
+        name: 'response',
+        value: '#UserResponse',
+      });
+    });
+
+    test('should tokenize @request with nested curly braces', () => {
+      const lexer = new Lexer('@request{user: {name: string}}');
+      const tokens = lexer.tokenize();
+      
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toEqual({
+        type: TokenType.ANNOTATION,
+        name: 'request',
+        value: 'user: {name: string}',
+      });
+    });
+
     test('should tokenize comments', () => {
       const lexer = new Lexer('%% This is a comment');
       const tokens = lexer.tokenize();

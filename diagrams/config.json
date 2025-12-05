@@ -6,6 +6,10 @@
       "file": "api-endpoints.json"
     },
     {
+      "id": "payload-schemas",
+      "file": "payload-schemas.json"
+    },
+    {
       "id": "async-messaging",
       "file": "async-messaging.json"
     },
