@@ -184,7 +184,6 @@
         background: white;
         pointer-events: none;
         overflow: hidden;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         margin: -20px -20px 0 -20px;
         padding: 0;
       }
@@ -192,6 +191,25 @@
       .frozen-header-overlay svg {
         max-width: none;
         display: block;
+      }
+
+      /* Hide participants in main diagram when frozen header is visible */
+      .diagram-scroll-container.show-frozen-header #diagram-container svg .participants {
+        visibility: hidden;
+      }
+
+      /* Hide title in main diagram when frozen header is visible */
+      .diagram-scroll-container.show-frozen-header #diagram-container svg .diagram-title {
+        visibility: hidden;
+      }
+
+      /* Remove padding when zoom is over 100% */
+      .diagram-scroll-container.zoomed-in {
+        padding: 0;
+      }
+
+      .diagram-scroll-container.zoomed-in .frozen-header-overlay {
+        margin: 0;
       }
 
       .diagram-toolbar {
@@ -1258,6 +1276,14 @@
           void diagramContainer.offsetHeight;
           diagramContainer.classList.remove('no-transition');
         }
+        
+        // Toggle padding based on zoom level (remove when > 100%)
+        if (currentZoom > 1) {
+          diagramScrollContainer.classList.add('zoomed-in');
+        } else {
+          diagramScrollContainer.classList.remove('zoomed-in');
+        }
+        
         // Update frozen header to match zoom
         updateFrozenHeader();
       }
@@ -1284,6 +1310,7 @@
       function updateFrozenHeader() {
         if (!currentAST) {
           frozenHeaderOverlay.style.display = 'none';
+          diagramScrollContainer.classList.remove('show-frozen-header');
           return;
         }
         
@@ -1292,6 +1319,7 @@
           const svg = diagramContainer.querySelector('svg');
           if (!svg) {
             frozenHeaderOverlay.style.display = 'none';
+            diagramScrollContainer.classList.remove('show-frozen-header');
             return;
           }
           
@@ -1321,12 +1349,23 @@
           svgClone.style.transform = `scale(${currentZoom})`;
           svgClone.style.transformOrigin = 'top left';
           
-          // Set overlay dimensions - add padding to account for negative margin
+          // Set overlay dimensions - adjust for zoom level
           const scaledHeight = headerHeight * currentZoom;
           frozenHeaderOverlay.style.height = scaledHeight + 'px';
-          frozenHeaderOverlay.style.width = 'calc(100% + 40px)';
-          frozenHeaderOverlay.style.paddingLeft = '20px';
+          
+          // Adjust width and padding based on zoom level
+          if (currentZoom > 1) {
+            frozenHeaderOverlay.style.width = '100%';
+            frozenHeaderOverlay.style.paddingLeft = '0';
+          } else {
+            frozenHeaderOverlay.style.width = 'calc(100% + 40px)';
+            frozenHeaderOverlay.style.paddingLeft = '20px';
+          }
+          
           frozenHeaderOverlay.style.display = 'block';
+          
+          // Add class to hide participants in main diagram
+          diagramScrollContainer.classList.add('show-frozen-header');
           
           // Sync horizontal scroll
           updateFrozenHeaderScroll();
@@ -1366,10 +1405,10 @@
         
         // Get container dimensions
         const containerHeight = scrollContainer.clientHeight;
-        const floatingHeaderHeight = floatingHeader.offsetHeight || 0;
+        const frozenHeaderHeight = frozenHeaderOverlay.offsetHeight || 0;
         
         // Calculate scroll position to center the current step
-        const targetScrollTop = scaledY - (containerHeight / 2) + (scaledHeight / 2) - floatingHeaderHeight;
+        const targetScrollTop = scaledY - (containerHeight / 2) + (scaledHeight / 2) + frozenHeaderHeight;
         
         // Smooth scroll to the target position
         scrollContainer.scrollTo({
