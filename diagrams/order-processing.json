@@ -1,5 +1,5 @@
 {
   "name": "Order Processing",
-  "description": "Basic order processing flow between client, API, and database",
-  "diagram": "sequenceDiagram\n    participant Client\n    participant API\n    participant Database\n\n    Client->>API: Create Order\n    API->>Database: Save Order\n    Database-->>API: Order Saved\n    API-->>Client: Order Created"
+  "description": "Order processing flow demonstrating different protocol types",
+  "diagram": "sequenceDiagram\n    title: Order Processing with Protocol Types\n    participant Client\n    participant API as API Gateway\n    participant SAP as SAP System\n    participant Legacy as Legacy Service\n    participant Queue as Message Queue\n\n    Client->>API: Create Order @type(JSON) @path(POST /api/orders)\n    API->>SAP: Create Sales Order @type(RFC_SAP) @path(BAPI_SALESORDER_CREATEFROMDAT2)\n    SAP-->>API: Sales Order Created @type(RFC_SAP)\n    API->>Legacy: Get Customer @type(SOAP) @path(/CustomerService.asmx)\n    Legacy-->>API: Customer Data @type(XML)\n    API->>Queue: Order Event @type(BINARY) @async\n    API-->>Client: Order Confirmation @type(JSON)"
 }

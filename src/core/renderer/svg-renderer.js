@@ -22,6 +22,24 @@ const HTTP_METHOD_COLORS = {
 };
 
 /**
+ * Request type (protocol) colors for visual distinction
+ */
+const REQUEST_TYPE_COLORS = {
+  JSON: { bg: '#4caf50', text: '#ffffff', icon: '{ }' },
+  SOAP: { bg: '#ff9800', text: '#ffffff', icon: '◇' },
+  XML: { bg: '#9c27b0', text: '#ffffff', icon: '< >' },
+  RFC_SAP: { bg: '#1976d2', text: '#ffffff', icon: '◈' },
+  GRAPHQL: { bg: '#e535ab', text: '#ffffff', icon: '◆' },
+  GRPC: { bg: '#244c5a', text: '#ffffff', icon: '⇌' },
+  BINARY: { bg: '#607d8b', text: '#ffffff', icon: '01' },
+};
+
+/**
+ * Default colors for custom/unknown request types
+ */
+const DEFAULT_REQUEST_TYPE_COLOR = { bg: '#757575', text: '#ffffff', icon: '●' };
+
+/**
  * API path badge styling constants
  */
 const BADGE_CONFIG = {
@@ -84,10 +102,15 @@ export class SVGRenderer {
     const participantPositions = this.renderParticipants(ast.participants, ast.title);
 
     // Render lifelines
-    this.renderLifelines(participantPositions, dimensions.height, ast.title);
+    this.renderLifelines(participantPositions, dimensions.height - dimensions.legendHeight, ast.title);
 
     // Render messages with arrows
     this.renderMessages(ast.messages, participantPositions, state, ast.title, dimensions);
+
+    // Render protocol legend if there are request types used
+    if (dimensions.usedRequestTypes && dimensions.usedRequestTypes.length > 0) {
+      this.renderProtocolLegend(dimensions);
+    }
 
     // Clear and append to container
     if (this.container) {
@@ -110,17 +133,34 @@ export class SVGRenderer {
     // Add height for title if present
     const titleHeight = ast.title ? 40 : 0;
 
-    // Check if any messages have path annotations (need extra height)
+    // Check if any messages have path or request type annotations (need extra height)
     const hasPathAnnotations = ast.messages.some(m => m.annotations?.path);
-    const effectiveMessageGap = hasPathAnnotations ? messageGap + 15 : messageGap;
+    const hasRequestTypeAnnotations = ast.messages.some(m => m.annotations?.requestType);
+    
+    // Collect unique request types used in the diagram
+    const usedRequestTypes = [...new Set(
+      ast.messages
+        .filter(m => m.annotations?.requestType)
+        .map(m => m.annotations.requestType.toUpperCase())
+    )];
+    
+    // Calculate legend height if there are request types used
+    const legendHeight = usedRequestTypes.length > 0 ? 50 : 0;
+    
+    // Calculate extra height needed for annotations
+    let annotationExtraHeight = 0;
+    if (hasPathAnnotations) annotationExtraHeight += 15;
+    if (hasRequestTypeAnnotations) annotationExtraHeight += 15;
+    
+    const effectiveMessageGap = messageGap + annotationExtraHeight;
 
     const width = numParticipants > 0
       ? padding * 2 + (numParticipants - 1) * participantGap + this.options.participantWidth
       : 400;
 
-    const height = padding * 2 + titleHeight + participantHeight + 30 + numMessages * effectiveMessageGap + 50;
+    const height = padding * 2 + titleHeight + participantHeight + 30 + numMessages * effectiveMessageGap + 50 + legendHeight;
 
-    return { width, height, titleHeight, effectiveMessageGap };
+    return { width, height, titleHeight, effectiveMessageGap, usedRequestTypes, legendHeight };
   }
 
   /**
@@ -382,6 +422,18 @@ export class SVGRenderer {
       );
       group.appendChild(pathBadge);
     }
+
+    // Add request type badge if present
+    if (message.annotations?.requestType) {
+      const textWidth = message.text.length * BADGE_CONFIG.pathCharWidth / 2;
+      const pathBadgeOffset = message.annotations?.path ? 80 : 0; // Offset if path badge exists
+      const typeBadge = this.createRequestTypeBadge(
+        pos.x + loopWidth + BADGE_CONFIG.labelOffset + textWidth + BADGE_CONFIG.labelSpacing + pathBadgeOffset,
+        y + loopHeight / 2 - 16, // Place above path badge
+        message.annotations.requestType
+      );
+      group.appendChild(typeBadge);
+    }
   }
 
   /**
@@ -409,14 +461,15 @@ export class SVGRenderer {
   }
 
   /**
-   * Create message label with optional API path annotation
+   * Create message label with optional API path and request type annotations
    */
   createMessageLabel(sourcePos, targetPos, y, message) {
     const midX = (sourcePos.x + targetPos.x) / 2;
     const hasPath = message.annotations?.path;
+    const hasRequestType = message.annotations?.requestType;
 
-    // If there's a path annotation, create a group containing label and path badge
-    if (hasPath) {
+    // If there are any annotations, create a group containing label and badges
+    if (hasPath || hasRequestType) {
       const group = this.createGroup('message-label-group');
 
       // Create message text
@@ -431,14 +484,30 @@ export class SVGRenderer {
       text.textContent = message.text;
       group.appendChild(text);
 
-      // Create API path badge
-      const pathBadge = this.createApiPathBadge(midX, y - 8, message.annotations);
-      group.appendChild(pathBadge);
+      // Calculate badge positions
+      let badgeY = y - 8;
+      
+      // Create request type badge if present
+      if (hasRequestType) {
+        const typeBadge = this.createRequestTypeBadge(midX, badgeY, message.annotations.requestType);
+        group.appendChild(typeBadge);
+        
+        // If there's also a path, offset it below the type badge
+        if (hasPath) {
+          badgeY = y + 8;
+        }
+      }
+
+      // Create API path badge if present
+      if (hasPath) {
+        const pathBadge = this.createApiPathBadge(midX, hasRequestType ? badgeY : y - 8, message.annotations);
+        group.appendChild(pathBadge);
+      }
 
       return group;
     }
 
-    // No path annotation - just return the text
+    // No annotations - just return the text
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', midX);
     text.setAttribute('y', y - 8);
@@ -450,6 +519,57 @@ export class SVGRenderer {
     text.textContent = message.text;
 
     return text;
+  }
+
+  /**
+   * Create request type badge with protocol color coding
+   */
+  createRequestTypeBadge(x, y, requestType) {
+    const group = this.createGroup('request-type-badge');
+    
+    // Normalize the request type to uppercase for lookup
+    const normalizedType = requestType?.toUpperCase() || '';
+    
+    // Get colors for the request type (support both standard and custom types)
+    const colors = REQUEST_TYPE_COLORS[normalizedType] || DEFAULT_REQUEST_TYPE_COLOR;
+
+    // Calculate badge dimensions
+    const { height, padding } = BADGE_CONFIG;
+    const typeText = requestType || '';
+    const charWidth = 7; // Character width for type badge
+    const badgeWidth = typeText.length * charWidth + padding;
+    const startX = x - badgeWidth / 2;
+
+    // Type background
+    const typeRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    typeRect.setAttribute('x', startX);
+    typeRect.setAttribute('y', y - height / 2);
+    typeRect.setAttribute('width', badgeWidth);
+    typeRect.setAttribute('height', height);
+    typeRect.setAttribute('rx', '3');
+    typeRect.setAttribute('fill', colors.bg);
+    typeRect.setAttribute('class', `request-type request-type-${normalizedType.toLowerCase().replace('_', '-')}`);
+    group.appendChild(typeRect);
+
+    // Type text
+    const typeLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    typeLabel.setAttribute('x', startX + badgeWidth / 2);
+    typeLabel.setAttribute('y', y);
+    typeLabel.setAttribute('text-anchor', 'middle');
+    typeLabel.setAttribute('dominant-baseline', 'middle');
+    typeLabel.setAttribute('font-family', 'monospace');
+    typeLabel.setAttribute('font-size', '10');
+    typeLabel.setAttribute('font-weight', '600');
+    typeLabel.setAttribute('fill', colors.text);
+    typeLabel.textContent = requestType;
+    group.appendChild(typeLabel);
+
+    // Add tooltip with type info
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    title.textContent = `Protocol: ${requestType}`;
+    group.appendChild(title);
+
+    return group;
   }
 
   /**
@@ -533,5 +653,67 @@ export class SVGRenderer {
     group.appendChild(title);
 
     return group;
+  }
+
+  /**
+   * Render protocol legend at the bottom of the diagram
+   */
+  renderProtocolLegend(dimensions) {
+    const { padding } = this.options;
+    const group = this.createGroup('protocol-legend');
+    
+    const legendY = dimensions.height - 30;
+    const legendStartX = padding;
+    
+    // Legend title
+    const legendTitle = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    legendTitle.setAttribute('x', legendStartX);
+    legendTitle.setAttribute('y', legendY);
+    legendTitle.setAttribute('text-anchor', 'start');
+    legendTitle.setAttribute('dominant-baseline', 'middle');
+    legendTitle.setAttribute('font-family', 'sans-serif');
+    legendTitle.setAttribute('font-size', '11');
+    legendTitle.setAttribute('font-weight', '600');
+    legendTitle.setAttribute('fill', '#666666');
+    legendTitle.textContent = 'Protocols:';
+    group.appendChild(legendTitle);
+    
+    // Render each used request type as a legend item
+    let currentX = legendStartX + 70;
+    const { height } = BADGE_CONFIG;
+    
+    dimensions.usedRequestTypes.forEach(requestType => {
+      const colors = REQUEST_TYPE_COLORS[requestType] || DEFAULT_REQUEST_TYPE_COLOR;
+      const charWidth = 7;
+      const badgeWidth = requestType.length * charWidth + 8;
+      
+      // Badge background
+      const typeRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      typeRect.setAttribute('x', currentX);
+      typeRect.setAttribute('y', legendY - height / 2);
+      typeRect.setAttribute('width', badgeWidth);
+      typeRect.setAttribute('height', height);
+      typeRect.setAttribute('rx', '3');
+      typeRect.setAttribute('fill', colors.bg);
+      typeRect.setAttribute('class', `request-type request-type-${requestType.toLowerCase().replace('_', '-')}`);
+      group.appendChild(typeRect);
+      
+      // Badge text
+      const typeLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      typeLabel.setAttribute('x', currentX + badgeWidth / 2);
+      typeLabel.setAttribute('y', legendY);
+      typeLabel.setAttribute('text-anchor', 'middle');
+      typeLabel.setAttribute('dominant-baseline', 'middle');
+      typeLabel.setAttribute('font-family', 'monospace');
+      typeLabel.setAttribute('font-size', '10');
+      typeLabel.setAttribute('font-weight', '600');
+      typeLabel.setAttribute('fill', colors.text);
+      typeLabel.textContent = requestType;
+      group.appendChild(typeLabel);
+      
+      currentX += badgeWidth + 10;
+    });
+    
+    this.svg.appendChild(group);
   }
 }
