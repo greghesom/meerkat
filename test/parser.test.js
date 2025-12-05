@@ -145,6 +145,26 @@ describe('Parser', () => {
       expect(ast.messages[0].annotations.timeout).toBe('5000ms');
     });
 
+    test('should parse @queue annotation', () => {
+      const ast = parse('API-->>Queue: Emit Event @queue(user-events)');
+      
+      expect(ast.messages[0].annotations.queue).toBe('user-events');
+    });
+
+    test('should parse @queue with @async annotation', () => {
+      const ast = parse('API-->>Queue: Emit Event @async @queue(notifications)');
+      
+      expect(ast.messages[0].annotations.isAsync).toBe(true);
+      expect(ast.messages[0].annotations.queue).toBe('notifications');
+    });
+
+    test('should parse @sync with @timeout annotation', () => {
+      const ast = parse('API->>Database: Query @sync @timeout(100ms)');
+      
+      expect(ast.messages[0].annotations.isAsync).toBe(false);
+      expect(ast.messages[0].annotations.timeout).toBe('100ms');
+    });
+
     test('should parse multiple annotations', () => {
       const ast = parse('Client->>API: Request @path(GET /api/users) @type(JSON) @sync');
       

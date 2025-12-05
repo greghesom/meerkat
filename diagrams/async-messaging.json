@@ -1,0 +1,5 @@
+{
+  "name": "Async Messaging Demo",
+  "description": "Demonstrates sync/async annotations with timeouts and message queues",
+  "diagram": "sequenceDiagram\n    title: Order Processing with Async Events\n    participant Client\n    participant API as API Gateway\n    participant DB as Database\n    participant Queue as Message Queue\n    participant Analytics\n    participant Email as Email Service\n\n    Client->>API: Create Order @sync @type(JSON) @path(POST /api/orders)\n    API->>DB: Query User @sync @timeout(100ms)\n    DB-->>API: User Data @sync\n    API->>DB: Save Order @sync @timeout(200ms)\n    DB-->>API: Order Saved @sync\n    API-->>Queue: Emit OrderCreated @async @queue(order-events)\n    Queue-->>Analytics: Process Analytics @async @queue(analytics)\n    Queue-->>Email: Send Confirmation @async @queue(notifications)\n    API-->>Client: Order Created @sync"
+}

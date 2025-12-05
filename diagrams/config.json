@@ -6,6 +6,10 @@
       "file": "api-endpoints.json"
     },
     {
+      "id": "async-messaging",
+      "file": "async-messaging.json"
+    },
+    {
       "id": "order-processing",
       "file": "order-processing.json"
     },
