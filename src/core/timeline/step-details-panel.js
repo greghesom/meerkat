@@ -432,16 +432,30 @@ export class StepDetailsPanel {
     let content = '';
     
     if (payload.type === 'reference') {
-      content = `
-        <a href="${this.escapeHtml(payload.url)}" style="
-          color: ${color};
-          text-decoration: none;
-          font-family: monospace;
-          font-size: 12px;
-        " target="_blank">
-          🔗 ${this.escapeHtml(payload.url)}
-        </a>
-      `;
+      // Validate URL safety before rendering as link
+      if (this.isSafeUrl(payload.url)) {
+        content = `
+          <a href="${this.escapeHtml(payload.url)}" style="
+            color: ${color};
+            text-decoration: none;
+            font-family: monospace;
+            font-size: 12px;
+          " target="_blank" rel="noopener noreferrer">
+            🔗 ${this.escapeHtml(payload.url)}
+          </a>
+        `;
+      } else {
+        // Unsafe URL - render as plain text
+        content = `
+          <span style="
+            color: ${color};
+            font-family: monospace;
+            font-size: 12px;
+          ">
+            🔗 ${this.escapeHtml(payload.url)}
+          </span>
+        `;
+      }
     } else if (payload.type === 'inline') {
       content = `
         <code style="
@@ -581,7 +595,7 @@ export class StepDetailsPanel {
    * @returns {string} Escaped text
    */
   escapeHtml(text) {
-    if (!text) return '';
+    if (text == null) return '';
     const escapeMap = {
       '&': '&amp;',
       '<': '&lt;',
@@ -590,6 +604,23 @@ export class StepDetailsPanel {
       "'": '&#039;',
     };
     return String(text).replace(/[&<>"']/g, char => escapeMap[char]);
+  }
+
+  /**
+   * Check if a URL is safe (not javascript: or data: schemes)
+   * @param {string} url - URL to validate
+   * @returns {boolean} True if URL is safe
+   */
+  isSafeUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    const trimmed = url.trim().toLowerCase();
+    // Block javascript:, data:, and vbscript: schemes
+    if (trimmed.startsWith('javascript:') || 
+        trimmed.startsWith('data:') || 
+        trimmed.startsWith('vbscript:')) {
+      return false;
+    }
+    return true;
   }
 
   /**

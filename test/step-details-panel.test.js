@@ -388,5 +388,53 @@ describe('StepDetailsPanel', () => {
       expect(panel.escapeHtml(null)).toBe('');
       expect(panel.escapeHtml(undefined)).toBe('');
     });
+
+    test('should handle falsy values like 0 and false', () => {
+      const container = new MockElement('div');
+      const panel = new StepDetailsPanel(container);
+      
+      expect(panel.escapeHtml(0)).toBe('0');
+      expect(panel.escapeHtml(false)).toBe('false');
+    });
+  });
+
+  describe('isSafeUrl', () => {
+    test('should return true for http URLs', () => {
+      const container = new MockElement('div');
+      const panel = new StepDetailsPanel(container);
+      
+      expect(panel.isSafeUrl('http://example.com')).toBe(true);
+      expect(panel.isSafeUrl('https://example.com')).toBe(true);
+    });
+
+    test('should return true for anchor references', () => {
+      const container = new MockElement('div');
+      const panel = new StepDetailsPanel(container);
+      
+      expect(panel.isSafeUrl('#UserSchema')).toBe(true);
+    });
+
+    test('should return false for javascript: URLs', () => {
+      const container = new MockElement('div');
+      const panel = new StepDetailsPanel(container);
+      
+      expect(panel.isSafeUrl('javascript:alert(1)')).toBe(false);
+      expect(panel.isSafeUrl('JAVASCRIPT:alert(1)')).toBe(false);
+    });
+
+    test('should return false for data: URLs', () => {
+      const container = new MockElement('div');
+      const panel = new StepDetailsPanel(container);
+      
+      expect(panel.isSafeUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
+    });
+
+    test('should return false for null or undefined', () => {
+      const container = new MockElement('div');
+      const panel = new StepDetailsPanel(container);
+      
+      expect(panel.isSafeUrl(null)).toBe(false);
+      expect(panel.isSafeUrl(undefined)).toBe(false);
+    });
   });
 });
