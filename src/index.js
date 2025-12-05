@@ -15,7 +15,7 @@ export class SequenceVisualizer {
 
     this.options = {
       theme: 'light',
-      enableTimeline: false, // Enable timeline slider by default
+      enableTimeline: false, // Timeline slider is disabled by default
       timelineContainer: null, // Separate container for timeline
       ...options,
     };

@@ -3,14 +3,11 @@
  * Provides a horizontal slider to scrub through sequence diagram messages/steps
  */
 
-/**
- * Step visibility states
- */
-export const StepState = {
-  PAST: 'past',       // Previous steps - muted colors
-  CURRENT: 'current', // Current step - highlighted
-  FUTURE: 'future',   // Future steps - hidden or outline
-};
+// Import StepState from svg-renderer to maintain a single source of truth
+import { StepState } from '../renderer/svg-renderer.js';
+
+// Re-export for convenience
+export { StepState };
 
 /**
  * Timeline Slider Configuration
