@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sequence Diagram Visualizer - Demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f5f5f5;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #333;
+      }
+
+      .container {
+        display: flex;
+        gap: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      .editor-panel {
+        flex: 1;
+        min-width: 300px;
+      }
+
+      .diagram-panel {
+        flex: 2;
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: auto;
+      }
+
+      textarea {
+        width: 100%;
+        height: 400px;
+        padding: 15px;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 13px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        resize: vertical;
+        background: #fff;
+      }
+
+      button {
+        margin-top: 10px;
+        padding: 10px 20px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        width: 100%;
+      }
+
+      button:hover {
+        background: #2563eb;
+      }
+
+      #diagram-container {
+        min-height: 300px;
+      }
+
+      .legend {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f9fafb;
+        border-radius: 6px;
+      }
+
+      .legend h3 {
+        margin-bottom: 10px;
+        font-size: 14px;
+        color: #666;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+
+      .arrow-demo {
+        display: inline-block;
+        width: 60px;
+        height: 2px;
+        background: #333;
+        position: relative;
+      }
+
+      .arrow-demo.dashed {
+        background: repeating-linear-gradient(
+          to right,
+          #333 0,
+          #333 5px,
+          transparent 5px,
+          transparent 8px
+        );
+      }
+
+      .arrow-demo::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: -4px;
+        border: 5px solid transparent;
+        border-left-color: #333;
+      }
+
+      /* SVG diagram styles */
+      .sequence-diagram .participant-box {
+        fill: #fff;
+        stroke: #333;
+        stroke-width: 2;
+      }
+
+      .sequence-diagram .participant-label {
+        font-size: 14px;
+        font-weight: 500;
+        fill: #333;
+      }
+
+      .sequence-diagram .message-label {
+        font-size: 12px;
+      }
+
+      .sequence-diagram .lifeline {
+        stroke: #ddd;
+        stroke-width: 1;
+        stroke-dasharray: 5, 5;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Meerkat - Sequence Diagram Visualizer</h1>
+
+    <div class="container">
+      <div class="editor-panel">
+        <textarea id="source">sequenceDiagram
+    participant Client
+    participant API
+    participant Database
+
+    Client->>API: Create Order
+    API->>Database: Save Order
+    Database-->>API: Order Saved
+    API-->>Client: Order Created</textarea>
+        <button id="render-btn">Render Diagram</button>
+
+        <div class="legend">
+          <h3>Arrow Types</h3>
+          <div class="legend-item">
+            <span class="arrow-demo"></span>
+            <span>Solid arrow (->>, ->) - Synchronous</span>
+          </div>
+          <div class="legend-item">
+            <span class="arrow-demo dashed"></span>
+            <span>Dashed arrow (-->>, -->) - Asynchronous</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="diagram-panel">
+        <div id="diagram-container"></div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { SequenceVisualizer } from './src/index.js';
+
+      // Initialize visualizer
+      const visualizer = new SequenceVisualizer('#diagram-container', {
+        theme: 'light',
+      });
+
+      // Render initial diagram
+      function renderDiagram() {
+        const source = document.getElementById('source').value;
+        const result = visualizer.render(source);
+        if (!result.success) {
+          console.error('Failed to render:', result.error);
+        }
+      }
+
+      // Initial render
+      renderDiagram();
+
+      // Re-render on button click
+      document.getElementById('render-btn').addEventListener('click', renderDiagram);
+
+      // Also render on Ctrl+Enter
+      document.getElementById('source').addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') {
+          renderDiagram();
+        }
+      });
+    </script>
+  </body>
+</html>
