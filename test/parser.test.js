@@ -515,5 +515,62 @@ sequenceDiagram
       expect(ast.flows[1].color).toBe('#EF4444');
       expect(ast.flows[2].color).toBe('#F59E0B');
     });
+
+    test('should parse @flow annotation with single flow', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow happy_path "Happy Path"
+    Client->>API: Submit Order @flow(happy_path)`);
+      
+      expect(ast.messages).toHaveLength(1);
+      expect(ast.messages[0].annotations.flows).toEqual(['happy_path']);
+    });
+
+    test('should parse @flow annotation with multiple flows', () => {
+      const ast = parse(`sequenceDiagram
+    %%flow happy_path "Happy Path"
+    %%flow error_flow "Error Flow"
+    %%flow retry_flow "Retry Flow"
+    Client->>API: Submit Order @flow(happy_path, error_flow, retry_flow)`);
+      
+      expect(ast.messages).toHaveLength(1);
+      expect(ast.messages[0].annotations.flows).toEqual(['happy_path', 'error_flow', 'retry_flow']);
+    });
+
+    test('should parse @flow annotation with spaces around commas', () => {
+      const ast = parse(`sequenceDiagram
+    Client->>API: Submit Order @flow(flow1,  flow2 , flow3)`);
+      
+      expect(ast.messages[0].annotations.flows).toEqual(['flow1', 'flow2', 'flow3']);
+    });
+
+    test('should have empty flows array when no @flow annotation', () => {
+      const ast = parse('Client->>API: Submit Order');
+      
+      expect(ast.messages[0].annotations.flows).toEqual([]);
+    });
+
+    test('should parse extended syntax example from issue', () => {
+      const source = `sequenceDiagram
+    %%flow happy_path "Happy Path"
+    %%flow error_flow "Error Flow"
+    %%flow retry_flow "Retry Flow"
+    
+    Client->>API: Submit Order @flow(happy_path, error_flow, retry_flow)
+    API->>Payment: Process Payment @flow(happy_path, error_flow)
+    Payment-->>API: Success @flow(happy_path)
+    Payment-->>API: Failed @flow(error_flow)
+    API->>Payment: Retry Payment @flow(retry_flow)`;
+
+      const ast = parse(source);
+      
+      expect(ast.flows).toHaveLength(3);
+      expect(ast.messages).toHaveLength(5);
+      
+      expect(ast.messages[0].annotations.flows).toEqual(['happy_path', 'error_flow', 'retry_flow']);
+      expect(ast.messages[1].annotations.flows).toEqual(['happy_path', 'error_flow']);
+      expect(ast.messages[2].annotations.flows).toEqual(['happy_path']);
+      expect(ast.messages[3].annotations.flows).toEqual(['error_flow']);
+      expect(ast.messages[4].annotations.flows).toEqual(['retry_flow']);
+    });
   });
 });

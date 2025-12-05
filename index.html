@@ -295,16 +295,57 @@
       .sequence-diagram .payload-response-bg {
         fill: #4caf50;
       }
+
+      /* Flow visibility styles */
+      .sequence-diagram .flow-hidden {
+        opacity: 0.15;
+        pointer-events: none;
+      }
+
+      /* Flow selector styles */
+      .flow-selector {
+        margin-top: 10px;
+        padding: 10px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 6px;
+      }
+
+      .flow-selector label {
+        font-weight: 500;
+        color: #166534;
+        margin-right: 8px;
+      }
+
+      .flow-selector select {
+        padding: 6px 10px;
+        font-size: 13px;
+        border: 1px solid #86efac;
+        border-radius: 4px;
+        background: white;
+        min-width: 200px;
+      }
+
+      .flow-selector select:focus {
+        outline: none;
+        border-color: #22c55e;
+      }
     </style>
   </head>
   <body>
     <h1>Meerkat - Sequence Diagram Visualizer</h1>
 
     <div class="config-selector">
-      <label for="diagram-select">Select Flow:</label>
+      <label for="diagram-select">Select Diagram:</label>
       <select id="diagram-select">
         <option value="">Loading diagrams...</option>
       </select>
+      <div id="flow-selector-container" class="flow-selector" style="display: none;">
+        <label for="flow-select">Filter by Flow:</label>
+        <select id="flow-select">
+          <option value="">Show All Flows</option>
+        </select>
+      </div>
       <div id="diagram-info" class="diagram-info" style="display: none;">
         <strong>Description:</strong> <span id="diagram-description"></span>
       </div>
@@ -390,6 +431,25 @@
           </div>
         </div>
 
+        <div class="legend" style="margin-top: 10px;">
+          <h3>Flow Annotations</h3>
+          <div class="legend-item">
+            <code>%%flow happy_path "Happy Path" #22C55E</code>
+            <span>- Define a flow with optional color</span>
+          </div>
+          <div class="legend-item">
+            <code>@flow(happy_path)</code>
+            <span>- Assign message to a flow</span>
+          </div>
+          <div class="legend-item">
+            <code>@flow(happy_path, error_flow)</code>
+            <span>- Shared message (multiple flows)</span>
+          </div>
+          <div class="legend-item" style="font-size: 12px; color: #666;">
+            Use the flow selector above to filter by active flow
+          </div>
+        </div>
+
         <div class="instructions">
           <h4>Adding New Diagrams</h4>
           <p>Create a new JSON file in the <code>diagrams/</code> folder and add it to <code>diagrams/config.json</code></p>
@@ -402,7 +462,7 @@
     </div>
 
     <script type="module">
-      import { SequenceVisualizer } from './src/index.js';
+      import { SequenceVisualizer, Lexer, Parser } from './src/index.js';
 
       // Initialize visualizer
       const visualizer = new SequenceVisualizer('#diagram-container', {
@@ -413,6 +473,8 @@
       let config = null;
       let currentDiagramData = null;
       let diagramNames = new Map(); // Cache for diagram names
+      let currentActiveFlow = null; // Current active flow for filtering
+      let currentAST = null; // Cache the current AST for flow selector
 
       // Show error message in UI
       function showError(message) {
@@ -502,19 +564,56 @@
         }
       }
 
+      // Parse source and update flow selector
+      function parseSourceAndUpdateFlows(source) {
+        try {
+          const lexer = new Lexer(source);
+          const tokens = lexer.tokenize();
+          const parser = new Parser(tokens);
+          currentAST = parser.parse();
+          
+          // Update flow selector
+          const flowSelectorContainer = document.getElementById('flow-selector-container');
+          const flowSelect = document.getElementById('flow-select');
+          
+          if (currentAST.flows && currentAST.flows.length > 0) {
+            flowSelect.innerHTML = '<option value="">Show All Flows</option>' +
+              currentAST.flows.map(f => 
+                `<option value="${f.id}" style="color: ${f.color}">${f.displayName || f.id}</option>`
+              ).join('');
+            flowSelectorContainer.style.display = 'block';
+          } else {
+            flowSelectorContainer.style.display = 'none';
+            currentActiveFlow = null;
+          }
+          
+          return currentAST;
+        } catch (error) {
+          console.error('Parse error:', error);
+          return null;
+        }
+      }
+
       // Render the current diagram
       function renderDiagram() {
         const source = document.getElementById('source').value;
-        const result = visualizer.render(source);
-        if (!result.success) {
-          console.error('Failed to render:', result.error);
-        }
+        
+        // Parse and update flow selector
+        const ast = parseSourceAndUpdateFlows(source);
+        if (!ast) return;
+        
+        // Render with active flow filter
+        visualizer.renderer.activeFlow = currentActiveFlow;
+        visualizer.renderer.flows = ast.flows || [];
+        visualizer.renderer.render(ast, { activeFlow: currentActiveFlow });
       }
 
       // Reset to config version
       function resetToConfig() {
         if (currentDiagramData) {
           document.getElementById('source').value = currentDiagramData.diagram;
+          currentActiveFlow = null;
+          document.getElementById('flow-select').value = '';
           renderDiagram();
         }
       }
@@ -522,8 +621,15 @@
       // Event listeners
       document.getElementById('diagram-select').addEventListener('change', (e) => {
         if (e.target.value) {
+          currentActiveFlow = null;
+          document.getElementById('flow-select').value = '';
           loadDiagram(e.target.value);
         }
+      });
+
+      document.getElementById('flow-select').addEventListener('change', (e) => {
+        currentActiveFlow = e.target.value || null;
+        renderDiagram();
       });
 
       document.getElementById('render-btn').addEventListener('click', renderDiagram);

@@ -1293,5 +1293,156 @@ describe('SVGRenderer', () => {
       // Should use first default color
       expect(line.getAttribute('stroke')).toBe('#22C55E');
     });
+
+    test('should render shared message (multi-flow) with neutral color', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      %%flow error_flow "Error Flow" #EF4444
+      Client->>API: Submit Order @flow(happy_path, error_flow)`);
+      
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const line = messageGroup.children.find((c) => c.tagName === 'line');
+      
+      // Shared message should use neutral/blended color (gray)
+      expect(line.getAttribute('stroke')).toBe('#888888');
+    });
+
+    test('should render single flow message with flow color', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      %%flow error_flow "Error Flow" #EF4444
+      Payment-->>API: Success @flow(happy_path)`);
+      
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const line = messageGroup.children.find((c) => c.tagName === 'line');
+      
+      // Single flow message should use that flow's color
+      expect(line.getAttribute('stroke')).toBe('#22C55E');
+    });
+
+    test('should hide message when active flow is not in message flows', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      %%flow error_flow "Error Flow" #EF4444
+      Payment-->>API: Success @flow(happy_path)`);
+      
+      // Render with error_flow as active flow
+      const svg = renderer.render(ast, { activeFlow: 'error_flow' });
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      
+      // Message should have reduced visibility (dimmed/hidden)
+      expect(messageGroup.getAttribute('class')).toContain('flow-hidden');
+    });
+
+    test('should show message when active flow is in message flows', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      %%flow error_flow "Error Flow" #EF4444
+      Payment-->>API: Success @flow(happy_path)`);
+      
+      // Render with happy_path as active flow
+      const svg = renderer.render(ast, { activeFlow: 'happy_path' });
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      
+      // Message should be visible (no flow-hidden class)
+      expect(messageGroup.getAttribute('class')).not.toContain('flow-hidden');
+    });
+
+    test('should show all messages when no active flow is set', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      %%flow error_flow "Error Flow" #EF4444
+      Client->>API: Submit Order @flow(happy_path, error_flow)
+      Payment-->>API: Success @flow(happy_path)
+      Payment-->>API: Failed @flow(error_flow)`);
+      
+      // Render without active flow
+      const svg = renderer.render(ast);
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      
+      // All messages should be visible
+      messagesGroup.children.forEach(messageGroup => {
+        expect(messageGroup.getAttribute('class')).not.toContain('flow-hidden');
+      });
+    });
+
+    test('should show shared messages when active flow is one of their flows', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      %%flow error_flow "Error Flow" #EF4444
+      Client->>API: Submit Order @flow(happy_path, error_flow)`);
+      
+      // Render with error_flow as active flow
+      const svg = renderer.render(ast, { activeFlow: 'error_flow' });
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      
+      // Shared message should be visible when one of its flows is active
+      expect(messageGroup.getAttribute('class')).not.toContain('flow-hidden');
+    });
+
+    test('should use flow color when active flow is set even for shared messages', () => {
+      const container = new MockElement('div');
+      const renderer = new SVGRenderer(container);
+      
+      const ast = parseSource(`sequenceDiagram
+      %%flow happy_path "Happy Path" #22C55E
+      %%flow error_flow "Error Flow" #EF4444
+      Client->>API: Submit Order @flow(happy_path, error_flow)`);
+      
+      // Render with happy_path as active flow
+      const svg = renderer.render(ast, { activeFlow: 'happy_path' });
+      
+      const messagesGroup = svg.children.find(
+        (c) => c.getAttribute('class') === 'messages'
+      );
+      const messageGroup = messagesGroup.children[0];
+      const line = messageGroup.children.find((c) => c.tagName === 'line');
+      
+      // When active flow is set, use that flow's color
+      expect(line.getAttribute('stroke')).toBe('#22C55E');
+    });
   });
 });
