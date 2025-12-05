@@ -160,20 +160,21 @@ export class TimelineSlider {
       gap: 8px;
     `;
 
+    // Use simple text characters that render consistently across browsers
     // First step button
-    const firstBtn = this.createButton('⏮', 'First step', () => this.goToStep(0));
+    const firstBtn = this.createButton('|◄', 'First step', () => this.goToStep(0));
     controls.appendChild(firstBtn);
 
     // Previous step button
-    const prevBtn = this.createButton('◀', 'Previous step', () => this.previousStep());
+    const prevBtn = this.createButton('◄', 'Previous step', () => this.previousStep());
     controls.appendChild(prevBtn);
 
     // Next step button
-    const nextBtn = this.createButton('▶', 'Next step', () => this.nextStep());
+    const nextBtn = this.createButton('►', 'Next step', () => this.nextStep());
     controls.appendChild(nextBtn);
 
     // Last step button
-    const lastBtn = this.createButton('⏭', 'Last step', () => this.goToStep(this.totalSteps));
+    const lastBtn = this.createButton('►|', 'Last step', () => this.goToStep(this.totalSteps));
     controls.appendChild(lastBtn);
 
     return controls;
@@ -181,7 +182,7 @@ export class TimelineSlider {
 
   /**
    * Create a control button
-   * @param {string} text - Button text/icon
+   * @param {string} text - Button text
    * @param {string} title - Button tooltip
    * @param {function} onClick - Click handler
    * @returns {HTMLElement} - Button element
@@ -192,17 +193,20 @@ export class TimelineSlider {
     btn.textContent = text;
     btn.title = title;
     btn.style.cssText = `
-      width: 32px;
+      min-width: 36px;
       height: 32px;
+      padding: 0 8px;
       border: 1px solid #ced4da;
       border-radius: 4px;
       background: white;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 12px;
+      font-family: Arial, sans-serif;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: all 0.15s ease;
+      color: #495057;
     `;
     btn.addEventListener('click', onClick);
     btn.addEventListener('mouseenter', () => {

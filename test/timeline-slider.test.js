@@ -452,9 +452,9 @@ describe('SVGRenderer with Timeline', () => {
     expect(messagesGroup.children[0].getAttribute('class')).toContain('step-past');
     // Second message should be current
     expect(messagesGroup.children[1].getAttribute('class')).toContain('step-current');
-    // Third message should be hidden (not in active flow) and future
+    // Third message should be hidden (not in active flow) - no step state since it's hidden
     expect(messagesGroup.children[2].getAttribute('class')).toContain('flow-hidden');
-    expect(messagesGroup.children[2].getAttribute('class')).toContain('step-future');
+    expect(messagesGroup.children[2].getAttribute('class')).not.toContain('step-');
   });
 });
 

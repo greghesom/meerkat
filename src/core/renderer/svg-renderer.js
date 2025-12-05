@@ -324,13 +324,17 @@ export class SVGRenderer {
   /**
    * Get the step state for a message based on current timeline position
    * @param {number} messageIndex - The 0-based index of the message
+   * @param {number} visibleIndex - The 0-based index among visible messages (for flow filtering)
    * @returns {string|null} - One of StepState.PAST, StepState.CURRENT, StepState.FUTURE, or null if no timeline active
    */
-  getStepState(messageIndex) {
+  getStepState(messageIndex, visibleIndex = null) {
     // If currentStep is null/undefined, timeline is not active - show all messages normally
     if (this.currentStep === null || this.currentStep === undefined) {
       return null;
     }
+
+    // Use visibleIndex if provided (when filtering by flow), otherwise use messageIndex
+    const stepIndex = visibleIndex !== null ? visibleIndex : messageIndex;
 
     // currentStep 0 = no messages shown (start state, all future)
     // currentStep 1 = first message is current
@@ -341,7 +345,7 @@ export class SVGRenderer {
       return StepState.FUTURE;
     }
 
-    const messageStep = messageIndex + 1; // Convert to 1-based
+    const messageStep = stepIndex + 1; // Convert to 1-based
 
     if (messageStep < this.currentStep) {
       return StepState.PAST;
@@ -529,6 +533,9 @@ export class SVGRenderer {
 
     const group = this.createGroup('messages');
 
+    // Track visible message index for flow-filtered step states
+    let visibleIndex = 0;
+
     messages.forEach((message, index) => {
       const y = startY + index * effectiveMessageGap;
       const sourcePos = positions.get(message.source);
@@ -540,8 +547,8 @@ export class SVGRenderer {
       const flowIds = message.annotations?.flows || [];
       const isVisible = this.isMessageVisible(flowIds);
 
-      // Get step state for timeline scrubbing
-      const stepState = this.getStepState(index);
+      // Get step state for timeline scrubbing (using visible index for flow filtering)
+      const stepState = isVisible ? this.getStepState(index, visibleIndex) : null;
 
       // Create message group with visibility and step state classes
       let className = `message-${index}`;
@@ -567,6 +574,11 @@ export class SVGRenderer {
         // Draw message label
         const label = this.createMessageLabel(sourcePos, targetPos, y, message, stepState);
         messageGroup.appendChild(label);
+      }
+
+      // Increment visible index only for visible messages
+      if (isVisible) {
+        visibleIndex++;
       }
 
       group.appendChild(messageGroup);

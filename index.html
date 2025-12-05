@@ -647,6 +647,19 @@
         }
       }
 
+      // Count visible messages based on active flow filter
+      function countVisibleMessages(ast, activeFlow) {
+        if (!activeFlow) {
+          return ast.messages.length;
+        }
+        // Count only messages that belong to the active flow
+        return ast.messages.filter(msg => {
+          const flowIds = msg.annotations?.flows || [];
+          // Message is visible if it has no flow assignments or belongs to the active flow
+          return flowIds.length === 0 || flowIds.includes(activeFlow);
+        }).length;
+      }
+
       // Render the current diagram
       function renderDiagram() {
         const source = document.getElementById('source').value;
@@ -655,9 +668,10 @@
         const ast = parseSourceAndUpdateFlows(source);
         if (!ast) return;
         
-        // Initialize timeline slider with the number of messages
-        if (ast.messages.length > 0) {
-          timelineSlider.init(ast.messages.length);
+        // Initialize timeline slider with the number of visible messages
+        const visibleCount = countVisibleMessages(ast, currentActiveFlow);
+        if (visibleCount > 0) {
+          timelineSlider.init(visibleCount);
           currentStep = null; // Reset to show all steps
         }
         
