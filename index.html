@@ -174,47 +174,24 @@
         max-width: none;
       }
 
-      /* Sticky floating header for title and participants */
-      .floating-header {
+      /* Frozen header overlay for title and participants (like Excel freeze panes) */
+      .frozen-header-overlay {
         position: sticky;
         top: 0;
+        left: 0;
+        right: 0;
         z-index: 10;
         background: white;
-        border-bottom: 1px solid #e9ecef;
+        pointer-events: none;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         margin: -20px -20px 0 -20px;
-        padding: 10px 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        padding: 0;
       }
 
-      .floating-header-content {
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        overflow-x: auto;
-        white-space: nowrap;
-      }
-
-      .floating-header-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #1a1a1a;
-        flex-shrink: 0;
-      }
-
-      .floating-participants {
-        display: flex;
-        gap: 10px;
-        flex-shrink: 0;
-      }
-
-      .floating-participant {
-        background: #ffffff;
-        border: 2px solid #333;
-        border-radius: 4px;
-        padding: 4px 12px;
-        font-size: 12px;
-        font-weight: 500;
-        color: #333;
+      .frozen-header-overlay svg {
+        max-width: none;
+        display: block;
       }
 
       .diagram-toolbar {
@@ -739,12 +716,7 @@
           </div>
         </div>
         <div class="diagram-scroll-container" id="diagram-scroll-container">
-          <div id="floating-header" class="floating-header" style="display: none;">
-            <div class="floating-header-content">
-              <span id="floating-title" class="floating-header-title"></span>
-              <div id="floating-participants" class="floating-participants"></div>
-            </div>
-          </div>
+          <div id="frozen-header-overlay" class="frozen-header-overlay" style="display: none;"></div>
           <div id="diagram-container"></div>
         </div>
         <div id="timeline-container"></div>
@@ -1105,13 +1077,15 @@
           currentStep: currentStep,
         });
         
-        // Update floating header with title and participants
-        updateFloatingHeader();
+        // Update frozen header with title and participants
+        updateFrozenHeader();
         
         // Default view is "Fit" - fit to viewport after initial render
         // Use setTimeout to ensure SVG is rendered before calculating fit
         setTimeout(() => {
           fitToWidth();
+          // Update frozen header after zoom changes
+          updateFrozenHeader();
         }, INITIAL_FIT_DELAY);
       }
 
@@ -1189,9 +1163,7 @@
       const diagramContainer = document.getElementById('diagram-container');
       const diagramScrollContainer = document.getElementById('diagram-scroll-container');
       const zoomLevelDisplay = document.getElementById('zoom-level');
-      const floatingHeader = document.getElementById('floating-header');
-      const floatingTitle = document.getElementById('floating-title');
-      const floatingParticipants = document.getElementById('floating-participants');
+      const frozenHeaderOverlay = document.getElementById('frozen-header-overlay');
       const autoScrollToggle = document.getElementById('auto-scroll-toggle');
       const autoScrollCheckbox = document.getElementById('auto-scroll-checkbox');
       
@@ -1210,6 +1182,8 @@
           void diagramContainer.offsetHeight;
           diagramContainer.classList.remove('no-transition');
         }
+        // Update frozen header to match zoom
+        updateFrozenHeader();
       }
 
       function fitToWidth() {
@@ -1230,34 +1204,69 @@
         }
       }
 
-      // Update floating header with title and participants
-      function updateFloatingHeader() {
+      // Update frozen header overlay with title and participants from SVG
+      function updateFrozenHeader() {
         if (!currentAST) {
-          floatingHeader.style.display = 'none';
+          frozenHeaderOverlay.style.display = 'none';
           return;
         }
         
-        // Set title
-        if (currentAST.title) {
-          floatingTitle.textContent = currentAST.title;
-          floatingTitle.style.display = 'block';
-        } else {
-          floatingTitle.style.display = 'none';
-        }
-        
-        // Set participants
-        floatingParticipants.innerHTML = '';
-        if (currentAST.participants && currentAST.participants.length > 0) {
-          currentAST.participants.forEach(p => {
-            const participantEl = document.createElement('span');
-            participantEl.className = 'floating-participant';
-            participantEl.textContent = p.displayName || p.id;
-            floatingParticipants.appendChild(participantEl);
-          });
-        }
-        
-        floatingHeader.style.display = 'block';
+        // Wait for SVG to be rendered
+        setTimeout(() => {
+          const svg = diagramContainer.querySelector('svg');
+          if (!svg) {
+            frozenHeaderOverlay.style.display = 'none';
+            return;
+          }
+          
+          // Clone the SVG and keep only title and participants
+          const svgClone = svg.cloneNode(true);
+          const svgWidth = svg.getAttribute('width');
+          
+          // Calculate the height of the header area (title + participants + some padding)
+          const hasTitle = currentAST.title ? 40 : 0;
+          const participantHeight = 40;
+          const padding = 40;
+          const headerHeight = padding + hasTitle + participantHeight + 10;
+          
+          // Update the cloned SVG to only show the header portion
+          svgClone.setAttribute('height', headerHeight);
+          svgClone.setAttribute('viewBox', `0 0 ${svgWidth} ${headerHeight}`);
+          
+          // Remove messages, lifelines, and legends from the clone (keep title and participants)
+          const elementsToRemove = svgClone.querySelectorAll('.messages, .lifelines, .protocol-legend, .flow-legend');
+          elementsToRemove.forEach(el => el.remove());
+          
+          // Clear the overlay and add the cloned SVG
+          frozenHeaderOverlay.innerHTML = '';
+          frozenHeaderOverlay.appendChild(svgClone);
+          
+          // Apply the same transform as the main diagram
+          svgClone.style.transform = `scale(${currentZoom})`;
+          svgClone.style.transformOrigin = 'top left';
+          
+          // Set overlay dimensions - add padding to account for negative margin
+          const scaledHeight = headerHeight * currentZoom;
+          frozenHeaderOverlay.style.height = scaledHeight + 'px';
+          frozenHeaderOverlay.style.width = 'calc(100% + 40px)';
+          frozenHeaderOverlay.style.paddingLeft = '20px';
+          frozenHeaderOverlay.style.display = 'block';
+          
+          // Sync horizontal scroll
+          updateFrozenHeaderScroll();
+        }, 10);
       }
+      
+      // Sync frozen header scroll with main diagram
+      function updateFrozenHeaderScroll() {
+        const svg = frozenHeaderOverlay.querySelector('svg');
+        if (svg) {
+          svg.style.marginLeft = (-diagramScrollContainer.scrollLeft) + 'px';
+        }
+      }
+      
+      // Listen for scroll events to sync the frozen header
+      diagramScrollContainer.addEventListener('scroll', updateFrozenHeaderScroll);
 
       // Auto-scroll to keep current step in view
       function scrollToCurrentStep() {
