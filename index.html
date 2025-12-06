@@ -23,14 +23,49 @@
         display: flex;
         flex-direction: column;
         height: 100vh;
-        padding: 15px;
       }
 
-      h1 {
-        text-align: center;
-        margin-bottom: 15px;
-        color: #333;
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        background: white;
+        border-bottom: 1px solid #e0e0e0;
         flex-shrink: 0;
+      }
+
+      .header h1 {
+        font-size: 20px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .header h1 a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .header-controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .header-controls select {
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        min-width: 200px;
+        cursor: pointer;
+      }
+
+      .header-controls select:focus {
+        outline: none;
+        border-color: #3b82f6;
       }
 
       .config-selector {
@@ -584,31 +619,33 @@
   </head>
   <body>
     <div class="page-wrapper">
-    <h1>Meerkat - Sequence Diagram Visualizer</h1>
-
-    <div class="config-selector">
-      <div class="config-selector-row">
-        <div class="config-selector-left">
-          <label for="diagram-select">Select Diagram:</label>
+      <header class="header">
+        <h1>
+          <a href="index.html">Meerkat</a>
+          <span style="color: #999; font-weight: normal;">/ Sequence Diagram Visualizer</span>
+        </h1>
+        <div class="header-controls">
+          <div class="mode-toggle" id="mode-toggle">
+            <span class="mode-toggle-btn active" title="View Mode">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+              </svg>
+              <span>View</span>
+            </span>
+            <a id="edit-mode-link" class="mode-toggle-btn" href="editor.html" title="Edit Mode">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+              </svg>
+              <span>Edit</span>
+            </a>
+          </div>
           <select id="diagram-select">
-            <option value="">Loading diagrams...</option>
+            <option value="">Select a diagram...</option>
           </select>
         </div>
-        <div class="mode-toggle">
-          <span class="mode-toggle-btn active" title="View Mode">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-            </svg>
-            <span>View</span>
-          </span>
-          <a id="edit-mode-link" class="mode-toggle-btn" href="editor.html" title="Edit Mode">
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-            </svg>
-            <span>Edit</span>
-          </a>
-        </div>
-      </div>
+      </header>
+
+    <div class="config-selector">
       <div id="flow-selector-container" class="flow-selector" style="display: none;">
         <label for="flow-select">Filter by Flow:</label>
         <select id="flow-select">
