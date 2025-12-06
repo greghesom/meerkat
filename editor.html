@@ -666,7 +666,7 @@
           const response = await fetch('./diagrams/config.json');
           if (!response.ok) throw new Error('Failed to load config');
           config = await response.json();
-          populateDiagramSelect();
+          await populateDiagramSelect();
           
           // Check for diagram query parameter
           const urlParams = new URLSearchParams(window.location.search);
