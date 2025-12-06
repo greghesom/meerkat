@@ -1,5 +1,5 @@
 /**
- * Syntax Editor Component for Mermaid sequence diagrams
+ * Syntax Editor Component for Meerkat sequence diagrams
  * Provides syntax highlighting, line numbers, and real-time preview
  */
 
