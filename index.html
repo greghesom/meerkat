@@ -239,14 +239,22 @@
         display: block;
       }
 
-      /* Hide participants in main diagram when frozen header is visible */
-      .diagram-scroll-container.show-frozen-header #diagram-container svg .participants {
-        visibility: hidden;
+      /* Always hide participants and title in main diagram */
+      #diagram-container svg .participants {
+        display: none;
       }
 
-      /* Hide title in main diagram when frozen header is visible */
-      .diagram-scroll-container.show-frozen-header #diagram-container svg .diagram-title {
-        visibility: hidden;
+      #diagram-container svg .diagram-title {
+        display: none;
+      }
+
+      /* Shift diagram content up to remove whitespace from hidden title/participants */
+      #diagram-container svg {
+        overflow: visible;
+      }
+
+      #diagram-container svg > *:not(.participants):not(.diagram-title) {
+        transform: translateY(-90px);
       }
 
       /* Remove padding when zoom is over 100% */
