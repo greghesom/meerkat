@@ -438,8 +438,6 @@
           <select id="diagram-select">
             <option value="">Select a diagram...</option>
           </select>
-          <button id="reset-btn" class="btn-secondary">Reset</button>
-
         </div>
       </header>
 
@@ -486,7 +484,6 @@
       const copilotSidebar = document.getElementById('copilot-sidebar');
 
       const diagramSelect = document.getElementById('diagram-select');
-      const resetBtn = document.getElementById('reset-btn');
       const statusMessages = document.getElementById('status-messages');
       const statusParticipants = document.getElementById('status-participants');
       const statusPosition = document.getElementById('status-position');
@@ -738,23 +735,12 @@
         }
       }
 
-      // Reset to original
-      async function resetToOriginal() {
-        if (currentDiagramData && currentDiagramId) {
-          syntaxEditor.setValue(currentDiagramData.diagram);
-          renderDiagram(currentDiagramData.diagram);
-          await diagramStorage.clearDiagramEdit(currentDiagramId);
-        }
-      }
-
       // Event listeners
       diagramSelect.addEventListener('change', (e) => {
         if (e.target.value) {
           loadDiagram(e.target.value);
         }
       });
-
-      resetBtn.addEventListener('click', resetToOriginal);
 
       // Initialize Copilot Panel
       const copilotPanel = new CopilotPanel(copilotSidebar, {
