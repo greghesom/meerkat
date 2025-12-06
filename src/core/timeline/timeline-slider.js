@@ -44,6 +44,8 @@ export class TimelineSlider {
       thumbSize: options.thumbSize || SLIDER_CONFIG.thumbSize,
       stepMarkerSize: options.stepMarkerSize || SLIDER_CONFIG.stepMarkerSize,
       onChange: options.onChange || null,
+      onAutoScrollChange: options.onAutoScrollChange || null,
+      autoScrollEnabled: options.autoScrollEnabled !== undefined ? options.autoScrollEnabled : true,
       ...options,
     };
 
@@ -51,6 +53,8 @@ export class TimelineSlider {
     this.currentStep = 0;
     this.sliderElement = null;
     this.infoElement = null;
+    this.autoScrollEnabled = this.options.autoScrollEnabled;
+    this.autoScrollToggle = null;
   }
 
   /**
@@ -142,6 +146,10 @@ export class TimelineSlider {
     const controls = this.createControlButtons();
     wrapper.appendChild(controls);
 
+    // Create auto-scroll toggle
+    const autoScrollToggle = this.createAutoScrollToggle();
+    wrapper.appendChild(autoScrollToggle);
+
     this.container.appendChild(wrapper);
 
     // Add custom slider styles
@@ -218,6 +226,111 @@ export class TimelineSlider {
       btn.style.borderColor = '#ced4da';
     });
     return btn;
+  }
+
+  /**
+   * Create auto-scroll toggle
+   * @returns {HTMLElement} - Auto-scroll toggle element
+   */
+  createAutoScrollToggle() {
+    const toggle = document.createElement('label');
+    toggle.className = 'auto-scroll-toggle' + (this.autoScrollEnabled ? ' active' : '');
+    toggle.title = 'Auto-scroll to keep current step in view';
+    toggle.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: ${this.autoScrollEnabled ? '#e0f2fe' : '#fff'};
+      border: 1px solid ${this.autoScrollEnabled ? '#3b82f6' : '#ddd'};
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      color: ${this.autoScrollEnabled ? '#1d4ed8' : '#333'};
+      transition: all 0.15s ease;
+      user-select: none;
+      margin-left: 8px;
+    `;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = this.autoScrollEnabled;
+    checkbox.style.display = 'none';
+
+    const indicator = document.createElement('span');
+    indicator.className = 'toggle-indicator';
+    indicator.style.cssText = `
+      width: 28px;
+      height: 16px;
+      background: ${this.autoScrollEnabled ? '#3b82f6' : '#ccc'};
+      border-radius: 8px;
+      position: relative;
+      transition: background 0.2s ease;
+    `;
+
+    const knob = document.createElement('span');
+    knob.style.cssText = `
+      content: '';
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: ${this.autoScrollEnabled ? '14px' : '2px'};
+      transition: left 0.2s ease;
+    `;
+    indicator.appendChild(knob);
+
+    const label = document.createElement('span');
+    label.textContent = 'Auto';
+
+    toggle.appendChild(checkbox);
+    toggle.appendChild(indicator);
+    toggle.appendChild(label);
+
+    // Store reference
+    this.autoScrollToggle = toggle;
+
+    // Click handler
+    toggle.addEventListener('click', (e) => {
+      e.preventDefault();
+      this.autoScrollEnabled = !this.autoScrollEnabled;
+      checkbox.checked = this.autoScrollEnabled;
+
+      // Update styles
+      toggle.style.background = this.autoScrollEnabled ? '#e0f2fe' : '#fff';
+      toggle.style.borderColor = this.autoScrollEnabled ? '#3b82f6' : '#ddd';
+      toggle.style.color = this.autoScrollEnabled ? '#1d4ed8' : '#333';
+      indicator.style.background = this.autoScrollEnabled ? '#3b82f6' : '#ccc';
+      knob.style.left = this.autoScrollEnabled ? '14px' : '2px';
+      toggle.classList.toggle('active', this.autoScrollEnabled);
+
+      // Trigger callback
+      if (this.options.onAutoScrollChange) {
+        this.options.onAutoScrollChange(this.autoScrollEnabled);
+      }
+    });
+
+    return toggle;
+  }
+
+  /**
+   * Get whether auto-scroll is enabled
+   * @returns {boolean}
+   */
+  isAutoScrollEnabled() {
+    return this.autoScrollEnabled;
+  }
+
+  /**
+   * Set auto-scroll enabled state
+   * @param {boolean} enabled
+   */
+  setAutoScrollEnabled(enabled) {
+    if (this.autoScrollEnabled !== enabled && this.autoScrollToggle) {
+      this.autoScrollToggle.click();
+    }
   }
 
   /**

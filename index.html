@@ -42,6 +42,17 @@
         flex-shrink: 0;
       }
 
+      .config-selector-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .config-selector-left {
+        display: flex;
+        align-items: center;
+      }
+
       .config-selector label {
         font-weight: 500;
         margin-right: 10px;
@@ -284,142 +295,8 @@
         border-color: #3b82f6;
       }
 
-      /* Auto-scroll toggle styles */
-      .auto-scroll-toggle {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        background: #fff;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 12px;
-        color: #333;
-        transition: all 0.15s ease;
-        user-select: none;
-      }
-
-      .auto-scroll-toggle:hover {
-        background: #f0f0f0;
-      }
-
-      .auto-scroll-toggle.active {
-        background: #e0f2fe;
-        border-color: #3b82f6;
-        color: #1d4ed8;
-      }
-
-      .auto-scroll-toggle input[type="checkbox"] {
-        display: none;
-      }
-
-      .auto-scroll-toggle .toggle-indicator {
-        width: 28px;
-        height: 16px;
-        background: #ccc;
-        border-radius: 8px;
-        position: relative;
-        transition: background 0.2s ease;
-      }
-
-      .auto-scroll-toggle.active .toggle-indicator {
-        background: #3b82f6;
-      }
-
-      .auto-scroll-toggle .toggle-indicator::after {
-        content: '';
-        position: absolute;
-        width: 12px;
-        height: 12px;
-        background: white;
-        border-radius: 50%;
-        top: 2px;
-        left: 2px;
-        transition: left 0.2s ease;
-      }
-
-      .auto-scroll-toggle.active .toggle-indicator::after {
-        left: 14px;
-      }
-
-      /* Smaller auto-scroll toggle for bottom controls */
-      .timeline-wrapper {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-shrink: 0;
-        border-top: 1px solid #e9ecef;
-        padding-right: 8px;
-      }
-
-      .timeline-wrapper #timeline-container {
-        flex: 1;
-        border-top: none;
-      }
-
-      .auto-scroll-toggle-small {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        padding: 2px 6px;
-        background: #fff;
-        border: 1px solid #ddd;
-        border-radius: 3px;
-        cursor: pointer;
-        font-size: 10px;
-        color: #666;
-        transition: all 0.15s ease;
-        user-select: none;
-        flex-shrink: 0;
-      }
-
-      .auto-scroll-toggle-small:hover {
-        background: #f0f0f0;
-      }
-
-      .auto-scroll-toggle-small.active {
-        background: #e0f2fe;
-        border-color: #3b82f6;
-        color: #1d4ed8;
-      }
-
-      .auto-scroll-toggle-small input[type="checkbox"] {
-        display: none;
-      }
-
-      .auto-scroll-toggle-small .toggle-indicator-small {
-        width: 20px;
-        height: 12px;
-        background: #ccc;
-        border-radius: 6px;
-        position: relative;
-        transition: background 0.2s ease;
-      }
-
-      .auto-scroll-toggle-small.active .toggle-indicator-small {
-        background: #3b82f6;
-      }
-
-      .auto-scroll-toggle-small .toggle-indicator-small::after {
-        content: '';
-        position: absolute;
-        width: 8px;
-        height: 8px;
-        background: white;
-        border-radius: 50%;
-        top: 2px;
-        left: 2px;
-        transition: left 0.2s ease;
-      }
-
-      .auto-scroll-toggle-small.active .toggle-indicator-small::after {
-        left: 10px;
-      }
-
       #timeline-container {
         flex-shrink: 0;
-        border-top: 1px solid #e9ecef;
       }
 
       textarea {
@@ -710,23 +587,27 @@
     <h1>Meerkat - Sequence Diagram Visualizer</h1>
 
     <div class="config-selector">
-      <label for="diagram-select">Select Diagram:</label>
-      <select id="diagram-select">
-        <option value="">Loading diagrams...</option>
-      </select>
-      <div class="mode-toggle">
-        <span class="mode-toggle-btn active" title="View Mode">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
-          </svg>
-          <span>View</span>
-        </span>
-        <a id="edit-mode-link" class="mode-toggle-btn" href="editor.html" title="Edit Mode">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-          </svg>
-          <span>Edit</span>
-        </a>
+      <div class="config-selector-row">
+        <div class="config-selector-left">
+          <label for="diagram-select">Select Diagram:</label>
+          <select id="diagram-select">
+            <option value="">Loading diagrams...</option>
+          </select>
+        </div>
+        <div class="mode-toggle">
+          <span class="mode-toggle-btn active" title="View Mode">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+            </svg>
+            <span>View</span>
+          </span>
+          <a id="edit-mode-link" class="mode-toggle-btn" href="editor.html" title="Edit Mode">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+            </svg>
+            <span>Edit</span>
+          </a>
+        </div>
       </div>
       <div id="flow-selector-container" class="flow-selector" style="display: none;">
         <label for="flow-select">Filter by Flow:</label>
@@ -863,14 +744,7 @@
           <div id="frozen-header-overlay" class="frozen-header-overlay" style="display: none;"></div>
           <div id="diagram-container"></div>
         </div>
-        <div class="timeline-wrapper">
-          <div id="timeline-container"></div>
-          <label id="auto-scroll-toggle" class="auto-scroll-toggle-small active" title="Auto-scroll to keep current step in view">
-            <input type="checkbox" id="auto-scroll-checkbox" checked>
-            <span class="toggle-indicator-small"></span>
-            <span>Auto</span>
-          </label>
-        </div>
+        <div id="timeline-container"></div>
       </div>
 
       <div class="step-details-panel-container">
@@ -1331,11 +1205,6 @@
       const diagramScrollContainer = document.getElementById('diagram-scroll-container');
       const zoomLevelDisplay = document.getElementById('zoom-level');
       const frozenHeaderOverlay = document.getElementById('frozen-header-overlay');
-      const autoScrollToggle = document.getElementById('auto-scroll-toggle');
-      const autoScrollCheckbox = document.getElementById('auto-scroll-checkbox');
-      
-      // Auto-scroll state (default on)
-      let isAutoScrollEnabled = true;
 
       function updateZoom(newZoom, smooth = true) {
         currentZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, newZoom));
@@ -1458,7 +1327,7 @@
 
       // Auto-scroll to keep current step in view
       function scrollToCurrentStep() {
-        if (!isAutoScrollEnabled || currentStep === null || currentStep === undefined) return;
+        if (!timelineSlider.isAutoScrollEnabled() || currentStep === null || currentStep === undefined) return;
         
         const svg = diagramContainer.querySelector('svg');
         if (!svg) return;
@@ -1538,13 +1407,6 @@
       diagramScrollContainer.addEventListener('mouseleave', () => {
         isPanning = false;
         diagramScrollContainer.classList.remove('panning');
-      });
-
-      // Auto-scroll toggle
-      autoScrollToggle.addEventListener('click', () => {
-        isAutoScrollEnabled = !isAutoScrollEnabled;
-        autoScrollCheckbox.checked = isAutoScrollEnabled;
-        autoScrollToggle.classList.toggle('active', isAutoScrollEnabled);
       });
 
       // Keyboard shortcuts for zoom
