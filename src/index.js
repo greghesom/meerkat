@@ -158,6 +158,7 @@ export {
 // Export editor features
 export { SyntaxEditor } from './core/editor/syntax-editor.js';
 export { SplitPane } from './core/editor/split-pane.js';
+export { CopilotPanel } from './core/editor/copilot-panel.js';
 
 // Expose globally for script tag usage
 if (typeof window !== 'undefined') {

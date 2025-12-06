@@ -341,6 +341,55 @@
       .back-link:hover {
         text-decoration: underline;
       }
+
+      /* Copilot toggle button */
+      .copilot-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        background: #7c3aed;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.15s ease;
+      }
+
+      .copilot-toggle:hover {
+        background: #6d28d9;
+      }
+
+      .copilot-toggle svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Main layout with copilot sidebar */
+      .main-layout {
+        display: flex;
+        flex: 1;
+        min-height: 0;
+      }
+
+      .main-content {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+      }
+
+      .copilot-sidebar {
+        width: 350px;
+        min-width: 300px;
+        max-width: 450px;
+        border-left: 1px solid #3c3c3c;
+        display: none;
+      }
+
+      .copilot-sidebar.visible {
+        display: block;
+      }
     </style>
   </head>
   <body>
@@ -355,11 +404,22 @@
             <option value="">Select a diagram...</option>
           </select>
           <button id="reset-btn" class="btn-secondary">Reset</button>
+          <button id="copilot-toggle-btn" class="copilot-toggle" title="Toggle Copilot Assistant">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span>Copilot</span>
+          </button>
         </div>
       </header>
 
-      <div class="main-content" id="split-pane-container">
-        <!-- Split pane will be injected here -->
+      <div class="main-layout">
+        <div class="main-content" id="split-pane-container">
+          <!-- Split pane will be injected here -->
+        </div>
+        <div class="copilot-sidebar" id="copilot-sidebar">
+          <!-- Copilot panel will be injected here -->
+        </div>
       </div>
 
       <div class="status-bar">
@@ -380,6 +440,7 @@
         Parser,
         SyntaxEditor,
         SplitPane,
+        CopilotPanel,
         diagramStorage,
       } from './src/index.js';
 
@@ -392,6 +453,8 @@
 
       // DOM elements
       const splitPaneContainer = document.getElementById('split-pane-container');
+      const copilotSidebar = document.getElementById('copilot-sidebar');
+      const copilotToggleBtn = document.getElementById('copilot-toggle-btn');
       const diagramSelect = document.getElementById('diagram-select');
       const resetBtn = document.getElementById('reset-btn');
       const statusMessages = document.getElementById('status-messages');
@@ -651,6 +714,29 @@
       });
 
       resetBtn.addEventListener('click', resetToOriginal);
+
+      // Initialize Copilot Panel
+      const copilotPanel = new CopilotPanel(copilotSidebar, {
+        apiKey: localStorage.getItem('meerkat_copilot_api_key') || null,
+        model: localStorage.getItem('meerkat_copilot_model') || 'gpt-4o',
+        getCurrentSource: () => syntaxEditor.getValue(),
+        onApplyEdit: (newSource) => {
+          syntaxEditor.setValue(newSource);
+          renderDiagram(newSource);
+          saveEdit(newSource);
+        },
+      });
+
+      // Toggle Copilot sidebar
+      copilotToggleBtn.addEventListener('click', () => {
+        copilotSidebar.classList.toggle('visible');
+        // Adjust toggle button style when active
+        if (copilotSidebar.classList.contains('visible')) {
+          copilotToggleBtn.style.background = '#6d28d9';
+        } else {
+          copilotToggleBtn.style.background = '#7c3aed';
+        }
+      });
 
       // Initialize
       loadConfig();
