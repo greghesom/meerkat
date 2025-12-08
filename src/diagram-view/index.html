@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <title>Diagram View - Meerkat</title>
+    <link rel="stylesheet" href="styles/diagram-view.css" />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html, body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #f5f5f5;
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .page-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        background: white;
+        border-bottom: 1px solid #e0e0e0;
+        flex-shrink: 0;
+      }
+
+      .header h1 {
+        font-size: 20px;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .header h1 a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .header-controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+
+      .header-controls select {
+        padding: 8px 12px;
+        font-size: 14px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        min-width: 200px;
+        cursor: pointer;
+      }
+
+      .mode-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px;
+        background: #e5e7eb;
+        border: none;
+        border-radius: 6px;
+      }
+
+      .mode-toggle-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.15s ease;
+        background: transparent;
+        color: #666;
+        text-decoration: none;
+      }
+
+      .mode-toggle-btn:hover {
+        color: #333;
+      }
+
+      .mode-toggle-btn.active {
+        background: white;
+        color: #333;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+
+      .mode-toggle-btn svg {
+        width: 14px;
+        height: 14px;
+      }
+
+      .diagram-view-container {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      .diagram-view-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .diagram-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: white;
+        border-bottom: 1px solid #e0e0e0;
+        flex-wrap: wrap;
+      }
+
+      .control-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .control-group label {
+        font-size: 14px;
+        color: #666;
+        white-space: nowrap;
+      }
+
+      .diagram-view-canvas {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        background: white;
+      }
+
+      .diagram-view-canvas-inner {
+        width: 100%;
+        height: 100%;
+        position: relative;
+      }
+
+      .diagram-overlay-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 100;
+      }
+
+      .diagram-view-sidebar {
+        width: 320px;
+        background: #fafafa;
+        border-left: 1px solid #e0e0e0;
+        overflow-y: auto;
+        flex-shrink: 0;
+        padding: 16px;
+      }
+
+      .diagram-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        font-size: 16px;
+        color: #999;
+      }
+
+      .diagram-error {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        padding: 32px;
+        text-align: center;
+      }
+
+      .diagram-error-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+      }
+
+      .diagram-error-message {
+        font-size: 16px;
+        color: #666;
+        margin-bottom: 8px;
+      }
+
+      .file-input-wrapper {
+        position: relative;
+        display: inline-block;
+      }
+
+      .file-input-wrapper input[type="file"] {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <header class="header">
+        <h1>
+          <a href="../index.html">Meerkat</a>
+          <span style="color: #999; font-weight: normal;">/ Diagram View</span>
+        </h1>
+        <div class="header-controls">
+          <div class="mode-toggle">
+            <a href="../index.html" class="mode-toggle-btn" title="View Mode">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+              </svg>
+              <span>View</span>
+            </a>
+            <a href="../editor.html" class="mode-toggle-btn" title="Edit Mode">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+              </svg>
+              <span>Edit</span>
+            </a>
+            <span class="mode-toggle-btn active" title="Diagram Mode">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+              </svg>
+              <span>Diagram</span>
+            </span>
+          </div>
+          <select id="diagram-select">
+            <option value="">Select a diagram...</option>
+          </select>
+        </div>
+      </header>
+
+      <div class="diagram-view-container">
+        <div class="diagram-view-main">
+          <div class="diagram-controls">
+            <div class="control-group">
+              <label class="file-input-wrapper diagram-control-btn">
+                Load Diagram XML
+                <input type="file" id="diagram-file-input" accept=".drawio,.xml" />
+              </label>
+              <label class="file-input-wrapper diagram-control-btn">
+                Load Sequence JSON
+                <input type="file" id="sequence-file-input" accept=".json" />
+              </label>
+            </div>
+            <div class="control-group" style="margin-left: auto;">
+              <button id="play-btn" class="diagram-control-btn primary">▶ Play</button>
+              <button id="step-btn" class="diagram-control-btn">Step →</button>
+              <button id="reset-btn" class="diagram-control-btn">↺ Reset</button>
+            </div>
+            <div class="control-group">
+              <label for="speed-slider">Speed:</label>
+              <input type="range" id="speed-slider" min="500" max="3000" value="1500" step="100" />
+              <span id="speed-value">1.5s</span>
+            </div>
+          </div>
+
+          <div class="diagram-view-canvas">
+            <div class="diagram-view-canvas-inner" id="diagram-container">
+              <div class="diagram-loading">
+                Load a diagram and sequence to begin
+              </div>
+            </div>
+            <div class="diagram-overlay-container" id="overlay-container"></div>
+          </div>
+        </div>
+
+        <div class="diagram-view-sidebar">
+          <div id="mapping-panel-container"></div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { DiagramView } from './diagram-view.js';
+      import { Lexer } from '../core/parser/lexer.js';
+      import { Parser } from '../core/parser/parser.js';
+
+      let diagramView = null;
+      let currentAst = null;
+      let currentDiagramXml = null;
+      let config = null;
+
+      // Initialize
+      async function init() {
+        // Load config
+        try {
+          const response = await fetch('../diagrams/config.json');
+          if (response.ok) {
+            config = await response.json();
+            populateDiagramSelect();
+          }
+        } catch (error) {
+          console.error('Failed to load config:', error);
+        }
+
+        // Initialize diagram view
+        diagramView = new DiagramView({
+          diagramContainer: document.getElementById('diagram-container'),
+          overlayContainer: document.getElementById('overlay-container'),
+          mappingPanelContainer: document.getElementById('mapping-panel-container'),
+          configId: 'diagram-view-default'
+        });
+
+        await diagramView.init();
+
+        // Check for URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const diagramParam = urlParams.get('diagram');
+        if (diagramParam && config) {
+          await loadDiagramFromConfig(diagramParam);
+        }
+      }
+
+      // Populate diagram dropdown
+      function populateDiagramSelect() {
+        const select = document.getElementById('diagram-select');
+        if (!config || !config.diagrams) return;
+
+        select.innerHTML = '<option value="">Select a diagram...</option>' +
+          config.diagrams.map(d => `<option value="${d.id}">${d.id}</option>`).join('');
+      }
+
+      // Load diagram from config
+      async function loadDiagramFromConfig(diagramId) {
+        const diagramEntry = config.diagrams.find(d => d.id === diagramId);
+        if (!diagramEntry) return;
+
+        try {
+          // Load sequence diagram
+          const response = await fetch(`../diagrams/${diagramEntry.file}`);
+          if (!response.ok) throw new Error('Failed to load diagram');
+          
+          const data = await response.json();
+          
+          // Parse sequence diagram
+          const lexer = new Lexer(data.diagram);
+          const tokens = lexer.tokenize();
+          const parser = new Parser(tokens);
+          currentAst = parser.parse();
+          
+          // Set sequence AST
+          diagramView.setSequenceAst(currentAst);
+          
+          // Show message
+          document.getElementById('diagram-container').innerHTML = 
+            '<div class="diagram-loading">Sequence loaded. Now load a .drawio architecture diagram.</div>';
+          
+        } catch (error) {
+          console.error('Failed to load diagram:', error);
+          showError('Failed to load sequence diagram');
+        }
+      }
+
+      // Handle diagram file upload
+      document.getElementById('diagram-file-input').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+          currentDiagramXml = await file.text();
+          await diagramView.loadDiagram(currentDiagramXml);
+          console.log('Diagram loaded successfully');
+        } catch (error) {
+          console.error('Failed to load diagram:', error);
+          showError('Failed to load diagram file');
+        }
+      });
+
+      // Handle sequence file upload
+      document.getElementById('sequence-file-input').addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+          const content = await file.text();
+          let source;
+          
+          // Try to parse as JSON first
+          try {
+            const data = JSON.parse(content);
+            source = data.diagram || data.source;
+            
+            if (!source) {
+              throw new Error('JSON file does not contain diagram or source property');
+            }
+          } catch (jsonError) {
+            // If JSON parsing fails, treat content as raw diagram source
+            source = content;
+          }
+          
+          // Parse the diagram source
+          const lexer = new Lexer(source);
+          const tokens = lexer.tokenize();
+          const parser = new Parser(tokens);
+          currentAst = parser.parse();
+          
+          diagramView.setSequenceAst(currentAst);
+          console.log('Sequence loaded successfully');
+        } catch (error) {
+          console.error('Failed to load sequence:', error);
+          showError('Failed to load sequence file: ' + error.message);
+        }
+      });
+
+      // Handle diagram select
+      document.getElementById('diagram-select').addEventListener('change', async (e) => {
+        if (e.target.value) {
+          await loadDiagramFromConfig(e.target.value);
+        }
+      });
+
+      // Control buttons
+      document.getElementById('play-btn').addEventListener('click', () => {
+        const speed = parseInt(document.getElementById('speed-slider').value);
+        const btn = document.getElementById('play-btn');
+        
+        if (diagramView.isPlaying) {
+          diagramView.stop();
+          btn.textContent = '▶ Play';
+        } else {
+          diagramView.play(speed);
+          btn.textContent = '⏸ Pause';
+        }
+      });
+
+      document.getElementById('step-btn').addEventListener('click', () => {
+        diagramView.goToStep(diagramView.currentStep);
+        diagramView.currentStep++;
+      });
+
+      document.getElementById('reset-btn').addEventListener('click', () => {
+        diagramView.reset();
+        document.getElementById('play-btn').textContent = '▶ Play';
+      });
+
+      // Speed slider
+      document.getElementById('speed-slider').addEventListener('input', (e) => {
+        const speed = parseInt(e.target.value);
+        document.getElementById('speed-value').textContent = `${(speed / 1000).toFixed(1)}s`;
+      });
+
+      // Show error message
+      function showError(message) {
+        document.getElementById('diagram-container').innerHTML = `
+          <div class="diagram-error">
+            <div class="diagram-error-icon">⚠️</div>
+            <div class="diagram-error-message">${message}</div>
+          </div>
+        `;
+      }
+
+      // Initialize on load
+      init();
+    </script>
+  </body>
+</html>

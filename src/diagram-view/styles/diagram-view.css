@@ -1,0 +1,390 @@
+/* Diagram View Styles */
+
+/* Mapping Panel */
+.mapping-panel {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.mapping-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.mapping-panel-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.mapping-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mapping-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mapping-btn:hover {
+  background: #f5f5f5;
+}
+
+.auto-map-btn {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.auto-map-btn:hover {
+  background: #2563eb;
+}
+
+.clear-all-btn:hover {
+  background: #fee;
+  border-color: #fcc;
+  color: #c00;
+}
+
+/* Mapping List */
+.mapping-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mapping-empty {
+  text-align: center;
+  padding: 32px;
+  color: #999;
+  font-size: 14px;
+}
+
+.mapping-item {
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+  transition: background 0.2s;
+}
+
+.mapping-item:hover {
+  background: #f5f5f5;
+}
+
+.mapping-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.mapping-status {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-mapped {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-unmapped {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-ambiguous {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.mapping-participant-name {
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.mapping-item-control {
+  margin-left: 28px;
+}
+
+.shape-select {
+  width: 100%;
+  padding: 6px 10px;
+  font-size: 13px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+.shape-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+/* Shape highlight pulse animation */
+.shape-highlight-pulse {
+  animation: shapePulse 1s ease-in-out infinite;
+}
+
+@keyframes shapePulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 0 var(--highlight-color, #4CAF50));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px var(--highlight-color, #4CAF50));
+  }
+}
+
+.highlight-source {
+  --highlight-color: #4CAF50;
+}
+
+.highlight-target {
+  --highlight-color: #2196F3;
+}
+
+.highlight-active {
+  --highlight-color: #FF9800;
+}
+
+/* Flow Markers */
+.flow-marker {
+  transition: opacity 0.2s;
+}
+
+.flow-marker-dot {
+  border-radius: 50%;
+}
+
+.flow-marker-arrow {
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+}
+
+/* Message Overlay */
+.message-overlay {
+  pointer-events: auto;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message-overlay-content {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+  min-width: 250px;
+  max-width: 400px;
+  position: relative;
+}
+
+.message-overlay-text {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: #333;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 8px;
+}
+
+.message-overlay-flow {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.message-overlay-label {
+  font-weight: 500;
+  color: #333;
+}
+
+.message-overlay-annotations {
+  font-size: 12px;
+  color: #666;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.message-overlay-annotations > div {
+  margin: 4px 0;
+}
+
+.message-overlay-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: #999;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: background 0.2s, color 0.2s;
+}
+
+.message-overlay-close:hover {
+  background: #f5f5f5;
+  color: #333;
+}
+
+/* Diagram Container */
+.diagram-view-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.diagram-view-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.diagram-view-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #f5f5f5;
+}
+
+.diagram-view-canvas-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.diagram-overlay-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.diagram-overlay-container > * {
+  pointer-events: auto;
+}
+
+/* Sidebar */
+.diagram-view-sidebar {
+  width: 320px;
+  background: #fafafa;
+  border-left: 1px solid #e0e0e0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* Controls */
+.diagram-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.diagram-control-btn {
+  padding: 8px 16px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.diagram-control-btn:hover {
+  background: #f5f5f5;
+}
+
+.diagram-control-btn.primary {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.diagram-control-btn.primary:hover {
+  background: #2563eb;
+}
+
+/* Loading State */
+.diagram-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 16px;
+  color: #999;
+}
+
+/* Error State */
+.diagram-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 32px;
+  text-align: center;
+}
+
+.diagram-error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.diagram-error-message {
+  font-size: 16px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.diagram-error-details {
+  font-size: 13px;
+  color: #999;
+}
