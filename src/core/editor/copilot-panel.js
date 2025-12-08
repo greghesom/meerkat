@@ -74,8 +74,10 @@ export class CopilotPanel {
     this.panelElement = null;
     this.inputElement = null;
     this.historyElement = null;
+    this.contextChipsElement = null;
     this.isLoading = false;
     this.conversationHistory = [];
+    this.selectedSteps = new Map(); // Map of stepIndex -> { message, stepIndex }
 
     this.init();
   }
@@ -151,16 +153,19 @@ export class CopilotPanel {
     `;
     this.panelElement.appendChild(this.historyElement);
 
-    // Input area
+    // Input area with context chips
     const inputArea = document.createElement('div');
     inputArea.className = 'copilot-input-area';
     inputArea.innerHTML = `
-      <textarea id="copilot-input" class="copilot-input" placeholder="Describe the changes you want to make..." rows="2"></textarea>
-      <button id="copilot-send-btn" class="copilot-btn copilot-btn-primary" title="Send">
-        <svg viewBox="0 0 24 24" fill="currentColor">
-          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-        </svg>
-      </button>
+      <div id="copilot-context-chips" class="copilot-context-chips"></div>
+      <div class="copilot-input-row">
+        <textarea id="copilot-input" class="copilot-input" placeholder="Describe the changes you want to make..." rows="2"></textarea>
+        <button id="copilot-send-btn" class="copilot-btn copilot-btn-primary" title="Send">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+      </div>
     `;
     this.panelElement.appendChild(inputArea);
 
@@ -202,6 +207,7 @@ export class CopilotPanel {
 
     // Store references
     this.inputElement = document.getElementById('copilot-input');
+    this.contextChipsElement = document.getElementById('copilot-context-chips');
   }
 
   /**
@@ -317,11 +323,14 @@ export class CopilotPanel {
    * @returns {Promise<{success: boolean, content?: string, error?: string}>}
    */
   async callCopilotAPI(userPrompt, currentSource) {
+    // Get step context if any steps are selected
+    const stepContext = this.formatStepContextForPrompt();
+    
     const messages = [
       { role: 'system', content: SYSTEM_PROMPT },
       { 
         role: 'user', 
-        content: `Current diagram:\n\`\`\`\n${currentSource}\n\`\`\`\n\nInstruction: ${userPrompt}\n\nPlease provide the updated diagram code only, without any markdown formatting or explanation.`
+        content: `Current diagram:\n\`\`\`\n${currentSource}\n\`\`\`${stepContext}\n\nInstruction: ${userPrompt}\n\nPlease provide the updated diagram code only, without any markdown formatting or explanation.`
       }
     ];
 
@@ -456,6 +465,158 @@ export class CopilotPanel {
     }
 
     modal?.classList.remove('visible');
+  }
+
+  /**
+   * Add a step to the context
+   * @param {number} stepIndex - The step index (0-based)
+   * @param {Object} message - The message object from the AST
+   */
+  addStepContext(stepIndex, message) {
+    if (this.selectedSteps.has(stepIndex)) return;
+    
+    this.selectedSteps.set(stepIndex, { stepIndex, message });
+    this.renderContextChips();
+  }
+
+  /**
+   * Remove a step from the context
+   * @param {number} stepIndex - The step index to remove
+   */
+  removeStepContext(stepIndex) {
+    this.selectedSteps.delete(stepIndex);
+    this.renderContextChips();
+  }
+
+  /**
+   * Toggle a step in the context (add if not present, remove if present)
+   * @param {number} stepIndex - The step index (0-based)
+   * @param {Object} message - The message object from the AST
+   * @param {boolean} addToSelection - If true, add to existing selection; if false, replace selection
+   */
+  toggleStepContext(stepIndex, message, addToSelection = false) {
+    if (addToSelection) {
+      // Ctrl+click behavior: toggle this step
+      if (this.selectedSteps.has(stepIndex)) {
+        this.removeStepContext(stepIndex);
+      } else {
+        this.addStepContext(stepIndex, message);
+      }
+    } else {
+      // Regular click: replace selection with just this step
+      this.selectedSteps.clear();
+      this.selectedSteps.set(stepIndex, { stepIndex, message });
+      this.renderContextChips();
+    }
+  }
+
+  /**
+   * Clear all step context
+   */
+  clearStepContext() {
+    this.selectedSteps.clear();
+    this.renderContextChips();
+  }
+
+  /**
+   * Get the selected steps as an array sorted by step index
+   * @returns {Array<{stepIndex: number, message: Object}>}
+   */
+  getSelectedSteps() {
+    return Array.from(this.selectedSteps.values()).sort((a, b) => a.stepIndex - b.stepIndex);
+  }
+
+  /**
+   * Render the context chips in the input area
+   */
+  renderContextChips() {
+    if (!this.contextChipsElement) return;
+
+    if (this.selectedSteps.size === 0) {
+      this.contextChipsElement.innerHTML = '';
+      this.contextChipsElement.style.display = 'none';
+      return;
+    }
+
+    this.contextChipsElement.style.display = 'flex';
+    this.contextChipsElement.innerHTML = '';
+
+    const sortedSteps = this.getSelectedSteps();
+    
+    sortedSteps.forEach(({ stepIndex, message }) => {
+      const chip = document.createElement('div');
+      chip.className = 'copilot-context-chip';
+      
+      // Format the chip label: "Step N: Source → Target"
+      const stepLabel = `Step ${stepIndex + 1}: ${message.source} → ${message.target}`;
+      
+      chip.innerHTML = `
+        <svg class="copilot-chip-icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+        </svg>
+        <span class="copilot-chip-label" title="${this.escapeHtml(message.text || stepLabel)}">${this.escapeHtml(stepLabel)}</span>
+        <button class="copilot-chip-remove" data-step-index="${stepIndex}" title="Remove from context">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+          </svg>
+        </button>
+      `;
+      
+      // Add remove button handler
+      const removeBtn = chip.querySelector('.copilot-chip-remove');
+      removeBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.removeStepContext(stepIndex);
+      });
+      
+      this.contextChipsElement.appendChild(chip);
+    });
+  }
+
+  /**
+   * Format selected steps as context for the API prompt
+   * @returns {string} Formatted context string
+   */
+  formatStepContextForPrompt() {
+    if (this.selectedSteps.size === 0) return '';
+
+    const sortedSteps = this.getSelectedSteps();
+    const contextLines = sortedSteps.map(({ stepIndex, message }) => {
+      let stepDesc = `Step ${stepIndex + 1}: ${message.source}${message.arrow}${message.target}: ${message.text}`;
+      
+      // Include annotations if present
+      if (message.annotations) {
+        const annotations = [];
+        if (message.annotations.path || message.annotations.method) {
+          const method = message.annotations.method || '';
+          const path = message.annotations.path || '';
+          annotations.push(`@path(${method} ${path})`.trim());
+        }
+        if (message.annotations.requestType) {
+          annotations.push(`@type(${message.annotations.requestType})`);
+        }
+        if (message.annotations.isAsync !== undefined) {
+          annotations.push(message.annotations.isAsync ? '@async' : '@sync');
+        }
+        if (message.annotations.timeout) {
+          annotations.push(`@timeout(${message.annotations.timeout})`);
+        }
+        if (message.annotations.queue) {
+          annotations.push(`@queue(${message.annotations.queue})`);
+        }
+        if (message.annotations.flows?.length > 0) {
+          message.annotations.flows.forEach(f => annotations.push(`@flow(${f})`));
+        }
+        if (annotations.length > 0) {
+          stepDesc += ' ' + annotations.join(' ');
+        }
+      }
+      
+      return stepDesc;
+    });
+
+    return `\n\nSelected steps for context:\n${contextLines.join('\n')}`;
   }
 
   /**
@@ -674,10 +835,75 @@ export class CopilotPanel {
 
       .copilot-input-area {
         display: flex;
+        flex-direction: column;
         gap: 8px;
         padding: 12px;
         background: #252526;
         border-top: 1px solid #3c3c3c;
+      }
+
+      .copilot-input-row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .copilot-context-chips {
+        display: none;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding-bottom: 4px;
+      }
+
+      .copilot-context-chip {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 6px 4px 8px;
+        background: #3c3c3c;
+        border: 1px solid #4c4c4c;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #e0e0e0;
+        max-width: 200px;
+      }
+
+      .copilot-chip-icon {
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+        color: #7c3aed;
+      }
+
+      .copilot-chip-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .copilot-chip-remove {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        padding: 0;
+        margin-left: 2px;
+        background: transparent;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        color: #888;
+        flex-shrink: 0;
+      }
+
+      .copilot-chip-remove:hover {
+        background: #555;
+        color: #e0e0e0;
+      }
+
+      .copilot-chip-remove svg {
+        width: 12px;
+        height: 12px;
       }
 
       .copilot-input {

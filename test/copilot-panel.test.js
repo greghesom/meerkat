@@ -350,4 +350,164 @@ describe('CopilotPanel', () => {
       expect(panel.historyElement).toBeNull();
     });
   });
+
+  describe('step context management', () => {
+    const mockMessage1 = {
+      source: 'Client',
+      target: 'Server',
+      arrow: '->>',
+      text: 'GET request',
+      annotations: {
+        method: 'GET',
+        path: '/api/users',
+        requestType: 'JSON',
+        isAsync: false
+      }
+    };
+
+    const mockMessage2 = {
+      source: 'Server',
+      target: 'Database',
+      arrow: '->>',
+      text: 'Query',
+      annotations: {
+        timeout: '100ms',
+        queue: 'db-queue'
+      }
+    };
+
+    const mockMessage3 = {
+      source: 'Server',
+      target: 'Client',
+      arrow: '-->>',
+      text: 'Response',
+      annotations: {
+        flows: ['happy_path', 'error_path']
+      }
+    };
+
+    test('should add step to context', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(0, mockMessage1);
+      
+      expect(panel.selectedSteps.size).toBe(1);
+      expect(panel.selectedSteps.has(0)).toBe(true);
+    });
+
+    test('should not duplicate steps', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(0, mockMessage1);
+      panel.addStepContext(0, mockMessage1);
+      
+      expect(panel.selectedSteps.size).toBe(1);
+    });
+
+    test('should remove step from context', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(0, mockMessage1);
+      panel.addStepContext(1, mockMessage2);
+      panel.removeStepContext(0);
+      
+      expect(panel.selectedSteps.size).toBe(1);
+      expect(panel.selectedSteps.has(0)).toBe(false);
+      expect(panel.selectedSteps.has(1)).toBe(true);
+    });
+
+    test('should toggle step context - add when not present', () => {
+      panel = new CopilotPanel(container);
+      panel.toggleStepContext(0, mockMessage1, true);
+      
+      expect(panel.selectedSteps.has(0)).toBe(true);
+    });
+
+    test('should toggle step context - remove when present', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(0, mockMessage1);
+      panel.toggleStepContext(0, mockMessage1, true);
+      
+      expect(panel.selectedSteps.has(0)).toBe(false);
+    });
+
+    test('should replace selection when not adding to selection', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(0, mockMessage1);
+      panel.addStepContext(1, mockMessage2);
+      panel.toggleStepContext(2, mockMessage3, false);
+      
+      expect(panel.selectedSteps.size).toBe(1);
+      expect(panel.selectedSteps.has(2)).toBe(true);
+    });
+
+    test('should clear all step context', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(0, mockMessage1);
+      panel.addStepContext(1, mockMessage2);
+      panel.clearStepContext();
+      
+      expect(panel.selectedSteps.size).toBe(0);
+    });
+
+    test('should get selected steps sorted by index', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(2, mockMessage3);
+      panel.addStepContext(0, mockMessage1);
+      panel.addStepContext(1, mockMessage2);
+      
+      const sorted = panel.getSelectedSteps();
+      expect(sorted.length).toBe(3);
+      expect(sorted[0].stepIndex).toBe(0);
+      expect(sorted[1].stepIndex).toBe(1);
+      expect(sorted[2].stepIndex).toBe(2);
+    });
+
+    test('should format step context for prompt', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(0, mockMessage1);
+      
+      const formatted = panel.formatStepContextForPrompt();
+      expect(formatted).toContain('Selected steps for context');
+      expect(formatted).toContain('Step 1');
+      expect(formatted).toContain('Client');
+      expect(formatted).toContain('Server');
+      expect(formatted).toContain('@path(GET /api/users)');
+      expect(formatted).toContain('@type(JSON)');
+      expect(formatted).toContain('@sync');
+    });
+
+    test('should format step context with timeout and queue', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(1, mockMessage2);
+      
+      const formatted = panel.formatStepContextForPrompt();
+      expect(formatted).toContain('@timeout(100ms)');
+      expect(formatted).toContain('@queue(db-queue)');
+    });
+
+    test('should format step context with multiple flows', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(2, mockMessage3);
+      
+      const formatted = panel.formatStepContextForPrompt();
+      expect(formatted).toContain('@flow(happy_path)');
+      expect(formatted).toContain('@flow(error_path)');
+    });
+
+    test('should return empty string when no steps selected', () => {
+      panel = new CopilotPanel(container);
+      
+      const formatted = panel.formatStepContextForPrompt();
+      expect(formatted).toBe('');
+    });
+
+    test('should format multiple steps in order', () => {
+      panel = new CopilotPanel(container);
+      panel.addStepContext(1, mockMessage2);
+      panel.addStepContext(0, mockMessage1);
+      
+      const formatted = panel.formatStepContextForPrompt();
+      const step1Pos = formatted.indexOf('Step 1');
+      const step2Pos = formatted.indexOf('Step 2');
+      expect(step1Pos).toBeLessThan(step2Pos);
+    });
+  });
 });

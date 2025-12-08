@@ -754,6 +754,16 @@
         },
       });
 
+      // Handle step click - add to Copilot context
+      function handleStepClick(stepIndex, message, event) {
+        // Check if Ctrl/Cmd is held for multi-select
+        const addToSelection = event.ctrlKey || event.metaKey;
+        copilotPanel.toggleStepContext(stepIndex, message, addToSelection);
+      }
+
+      // Wire up step click handler to the renderer
+      visualizer.renderer.setOnStepClick(handleStepClick);
+
       // Initialize
       loadConfig();
     </script>
