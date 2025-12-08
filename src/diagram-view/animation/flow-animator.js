@@ -141,6 +141,7 @@ export class FlowAnimator {
     return new Promise((resolve) => {
       const startTime = performance.now();
       const totalLength = this.calculatePathLength(points);
+      let animationId = null;
       
       const animate = (currentTime) => {
         const elapsed = currentTime - startTime;
@@ -164,13 +165,16 @@ export class FlowAnimator {
         }
         
         if (progress < 1) {
-          requestAnimationFrame(animate);
+          animationId = requestAnimationFrame(animate);
+          // Store animation ID for potential cancellation
+          this.activeAnimations.push(animationId);
         } else {
           resolve();
         }
       };
       
-      requestAnimationFrame(animate);
+      animationId = requestAnimationFrame(animate);
+      this.activeAnimations.push(animationId);
     });
   }
 
@@ -254,9 +258,15 @@ export class FlowAnimator {
    * Cancel all active animations
    */
   cancelAll() {
+    // Cancel all active animation frames
+    this.activeAnimations.forEach(id => {
+      if (id) cancelAnimationFrame(id);
+    });
+    
     // Remove all marker elements
     const markers = this.overlay.querySelectorAll('.flow-marker');
     markers.forEach(marker => marker.remove());
+    
     this.activeAnimations = [];
   }
 }

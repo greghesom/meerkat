@@ -19,22 +19,21 @@ export class MessageOverlay {
   show(message, position) {
     this.currentMessage = message;
     
-    // Remove existing overlay
-    this.hide();
+    // Reuse overlay if it exists, otherwise create new one
+    if (!this.overlay) {
+      this.overlay = document.createElement('div');
+      this.overlay.className = 'message-overlay';
+      this.overlay.style.position = 'absolute';
+      this.overlay.style.zIndex = '2000';
+      this.container.appendChild(this.overlay);
+    }
     
-    // Create overlay element
-    this.overlay = document.createElement('div');
-    this.overlay.className = 'message-overlay';
-    this.overlay.style.position = 'absolute';
+    // Update position
     this.overlay.style.left = `${position.x}px`;
     this.overlay.style.top = `${position.y}px`;
-    this.overlay.style.zIndex = '2000';
     
-    // Build content
+    // Update content
     this.overlay.innerHTML = this.buildContent(message);
-    
-    // Add to container
-    this.container.appendChild(this.overlay);
     
     // Adjust position if overlay goes off screen
     this.adjustPosition();

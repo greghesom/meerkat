@@ -130,10 +130,10 @@ export class DrawioRenderer {
       }
       
       // Otherwise, return the original - might need additional handling
-      return decoded;
+      throw new Error('Unable to decompress: content does not appear to be valid XML after decompression');
     } catch (error) {
       console.error('Decompression error:', error);
-      throw new Error('Failed to decompress diagram content');
+      throw new Error(`Failed to decompress diagram content: ${error.message}`);
     }
   }
 

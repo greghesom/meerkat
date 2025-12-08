@@ -393,10 +393,22 @@
 
         try {
           const content = await file.text();
-          const data = JSON.parse(content);
+          let source;
+          
+          // Try to parse as JSON first
+          try {
+            const data = JSON.parse(content);
+            source = data.diagram || data.source;
+            
+            if (!source) {
+              throw new Error('JSON file does not contain diagram or source property');
+            }
+          } catch (jsonError) {
+            // If JSON parsing fails, treat content as raw diagram source
+            source = content;
+          }
           
           // Parse the diagram source
-          const source = data.diagram || data.source || content;
           const lexer = new Lexer(source);
           const tokens = lexer.tokenize();
           const parser = new Parser(tokens);
@@ -406,7 +418,7 @@
           console.log('Sequence loaded successfully');
         } catch (error) {
           console.error('Failed to load sequence:', error);
-          showError('Failed to load sequence file');
+          showError('Failed to load sequence file: ' + error.message);
         }
       });
 
