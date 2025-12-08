@@ -142,12 +142,20 @@ export class Parser {
       this.position++; // skip 'as'
 
       const aliasToken = this.current();
-      if (aliasToken?.type === TokenType.IDENTIFIER) {
+      if (aliasToken?.type === TokenType.STRING) {
+        // Quoted string - use as-is
         displayName = aliasToken.value;
         this.position++;
-      } else if (aliasToken?.type === TokenType.STRING) {
-        displayName = aliasToken.value;
-        this.position++;
+      } else if (aliasToken?.type === TokenType.IDENTIFIER) {
+        // Collect all identifiers until end of line for multi-word display names
+        const nameParts = [];
+        while (this.current() && 
+               this.current().type === TokenType.IDENTIFIER &&
+               this.current().type !== TokenType.NEWLINE) {
+          nameParts.push(this.current().value);
+          this.position++;
+        }
+        displayName = nameParts.join(' ');
       }
     }
 
